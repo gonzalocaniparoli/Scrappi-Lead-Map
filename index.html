@@ -57,14 +57,14 @@
         function getGeoContext(url) {
             if (url.includes(".com.ar")) return ", Argentina";
             if (url.includes(".com.uy")) return ", Uruguay";
+            if (url.includes(".com.mx") || url.includes("ubereats.com")) return ", Mexico";
             if (url.includes("didiglobal.com/co")) return ", Colombia";
             return "";
         }
 
-        // 1. Normalizar número de WhatsApp
         function getWaLink(phone) {
             if (!phone) return null;
-            let clean = phone.replace(/\D/g, ''); // Solo números
+            let clean = phone.replace(/\D/g, ''); 
             if (clean.length < 8) return null;
             return `https://wa.me/${clean}`;
         }
@@ -80,9 +80,9 @@
 
             let popupContent = `
                 <div class="popup-card">
-                    <b>${shop.NAME}</b>
+                    <b>${shop.NAME || shop.COMPANYNAME || 'Sin nombre'}</b>
                     <span class="badge">${shop.CATEGORIES || 'Sin Rubro'}</span>
-                    <p>📍 ${shop.ADDRESS}</p>
+                    <p>📍 ${shop.ADDRESS || 'Sin dirección'}</p>
                     <p>⭐ Rating: <b>${rating}</b></p>
                     ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa">📱 Enviar WhatsApp</a>` : '<p style="color:#ef4444; font-size:10px;">❌ Sin teléfono detectado</p>'}
                     <a href="${shop.URL}" target="_blank" style="display:block; text-align:center; font-size:11px; margin-top:8px; color:#6366f1;">Ver en Tienda</a>
@@ -92,8 +92,7 @@
             return marker.bindPopup(popupContent);
         }
 
-        async function render(selectedCat = "all") {
-            // Limpiar marcadores
+       async function render(selectedCat = "all") {
             map.eachLayer(layer => { if (layer instanceof L.CircleMarker) map.removeLayer(layer); });
             heatLayer.setLatLngs([]);
 
@@ -102,24 +101,29 @@
             let firstPoint = false;
             let heatData = [];
 
-            // Procesar leads
             for (const shop of window.SCRAPED_LEADS) {
-                // Filtro de categorías
-                const shopCats = shop.CATEGORIES ? shop.CATEGORIES.toLowerCase() : "";
+                // CORRECCIÓN PARA CATEGORÍAS (Si es Array, lo une con comas)
+                let rawCats = shop.CATEGORIES || "";
+                if (Array.isArray(rawCats)) rawCats = rawCats.join(", ");
+                
+                const shopCats = rawCats.toLowerCase();
                 if (selectedCat !== "all" && !shopCats.includes(selectedCat.toLowerCase())) continue;
 
-                let lat = parseFloat(shop.LAT);
-                let lng = parseFloat(shop.LNG);
+                // NORMALIZACIÓN DE LAT/LNG
+                let lat = parseFloat(shop.LAT || shop.lat || shop.latitude || 0);
+                let lng = parseFloat(shop.LNG || shop.lng || shop.longitude || 0);
 
-                // CASO A: Coordenadas directas
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    if (!firstPoint) { map.setView([lat, lng], 14); firstPoint = true; }
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0) {
+                    // Centrar el mapa en el primer punto encontrado
+                    if (!firstPoint) { 
+                        map.setView([lat, lng], 14); 
+                        firstPoint = true; 
+                    }
                     createMarker(lat, lng, shop).addTo(map);
                     heatData.push([lat, lng, 0.5]);
                 } 
-                // CASO B: Dirección (DiDi)
-                else if (shop.ADDRESS && shop.ADDRESS.length > 3) {
-                    const context = getGeoContext(shop.URL);
+                else if (shop.ADDRESS && shop.ADDRESS.length > 3 && !shop.NAME?.includes("ERROR")) {
+                    const context = getGeoContext(shop.URL || "");
                     const query = encodeURIComponent(shop.ADDRESS + context);
                     try {
                         const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
@@ -129,16 +133,14 @@
                             const fLng = parseFloat(data[0].lon);
                             if (!firstPoint) { map.setView([fLat, fLng], 14); firstPoint = true; }
                             createMarker(fLat, fLng, shop).addTo(map);
-                            heatLayer.addLatLng([fLat, fLng, 0.5]);
+                            heatData.push([fLat, fLng, 0.5]);
                         }
                         await sleep(1000);
-                    } catch (e) { console.error("Error ubicando tienda"); }
+                    } catch (e) { console.error("Error geocodificando"); }
                 }
             }
             heatLayer.setLatLngs(heatData);
         }
-
-        // 2. Control de Filtro de Rubro
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
@@ -161,7 +163,6 @@
             filterControl.addTo(map);
         }
 
-        // Leyenda de Rating
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
