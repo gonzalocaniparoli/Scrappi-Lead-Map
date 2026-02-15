@@ -103,6 +103,41 @@
             if (markers.length > 0) map.fitBounds(L.latLngBounds(markers), { padding: [50, 50] });
         }
 
+        // --- FILTRO DE RUBROS DINÁMICO ---
+        const filterControl = L.control({ position: 'topleft' });
+        filterControl.onAdd = function() {
+            const div = L.DomUtil.create('div', 'legend');
+            div.style.background = "white";
+            div.style.padding = "10px";
+            
+            // Crea una lista de rubros únicos de tus datos
+            const categories = [...new Set(window.SCRAPED_LEADS.map(s => s.CATEGORIES).filter(c => c))];
+            
+            let html = '<b>Filtrar Rubro</b><br><select id="catFilter" style="width:100%; padding:5px; margin-top:5px; border-radius:5px; border:1px solid #ccc;">';
+            html += '<option value="all">Mostrar Todos</option>';
+            categories.forEach(c => { html += `<option value="${c}">${c}</option>`; });
+            html += '</select>';
+            
+            div.innerHTML = html;
+            
+            // Lógica para filtrar puntos en el mapa
+            div.onchange = (e) => {
+                const selected = e.target.value;
+                map.eachLayer(layer => { if(layer instanceof L.CircleMarker) map.removeLayer(layer); });
+                
+                window.SCRAPED_LEADS.forEach(shop => {
+                    if (selected === "all" || shop.CATEGORIES === selected) {
+                        const lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            getMarker(lat, lng, parseFloat(shop.RATING || 0), shop).addTo(map);
+                        }
+                    }
+                });
+            };
+            return div;
+        };
+        filterControl.addTo(map);   
+
         // Leyenda
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
