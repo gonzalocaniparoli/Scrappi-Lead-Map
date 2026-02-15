@@ -58,14 +58,23 @@
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.Control.geocoder({ position: 'topleft', placeholder: 'Buscar zona...' }).addTo(map);
 
+        // BOTÓN UBICACIÓN CORREGIDO
         const locateControl = L.control({ position: 'topright' });
         locateControl.onAdd = () => {
             const btn = L.DomUtil.create('button', 'locate-button');
             btn.innerHTML = '🎯';
-            btn.onclick = () => map.locate({ setView: true, maxZoom: 16 });
+            btn.onclick = () => {
+                map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
+            };
             return btn;
         };
         locateControl.addTo(map);
+
+        // ESCUCHADOR DE GPS
+        map.on('locationfound', (e) => {
+            map.setView(e.latlng, 16);
+            L.circle(e.latlng, { radius: 12, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.4 }).addTo(map);
+        });
 
         function getMarker(lat, lng, rating, shop) {
             let color = rating >= 4.5 ? '#22c55e' : (rating >= 4.0 ? '#eab308' : '#ef4444');
