@@ -13,7 +13,6 @@
         #map { height: 100vh; width: 100%; background: #f8fafc; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
         
-        /* Contenedores de interfaz */
         .legend {
             background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 22px; color: #1e293b;
@@ -22,26 +21,22 @@
         .legend b { display: block; font-size: 14px; margin-bottom: 6px; color: #ff441f; }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
-        /* Botón de ubicación */
         .locate-button {
             background: #fff; border: none; width: 42px; height: 42px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             font-size: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
-        /* Botones de acción en el Popup */
-        .btn-action {
-            display: block; width: 100%; padding: 10px; margin-top: 8px;
+        .btn-wa {
+            display: block; width: 100%; padding: 12px; margin-top: 10px;
             border-radius: 8px; text-decoration: none; font-weight: bold;
             font-size: 12px; text-align: center; color: white;
+            background: #25D366; box-shadow: 0 2px 5px rgba(37,211,102,0.3);
         }
-        .btn-wa { background: #25D366; }
-        .btn-rev { background: #ff441f; }
 
-        /* Optimización Móvil */
         @media (max-width: 600px) {
             .legend { padding: 8px; font-size: 11px; max-width: 140px; }
-            .leaflet-popup-content { width: 200px !important; margin: 10px; }
+            .leaflet-popup-content { width: 180px !important; margin: 10px; }
             .legend-items { display: flex; flex-direction: row; gap: 8px; }
         }
     </style>
@@ -72,28 +67,24 @@
         };
         locateControl.addTo(map);
 
-        // --- CEREBRO DE MARCADO Y CONTACTO ---
         function getMarker(lat, lng, rating, shop) {
             let color = rating >= 4.5 ? '#22c55e' : (rating >= 4.0 ? '#eab308' : '#ef4444');
-            
-            // Link WhatsApp
             const cleanPhone = shop.PHONE ? shop.PHONE.replace(/\D/g, '') : '';
             const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
-            
-            // Link Reseñas (PeYa usa /reviews)
-            const reviewsLink = shop.URL ? shop.URL.replace('-menu', '/reviews') : '#';
 
             return L.circleMarker([lat, lng], {
                 radius: 9, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9
             }).bindPopup(`
-                <div style="min-width:180px;">
+                <div style="min-width:160px;">
                     <b style="font-size:15px;">${shop.NAME}</b><br>
                     <small style="color:#64748b;">${shop.ADDRESS}</small><hr style="border:0;border-top:1px solid #eee">
-                    <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}<br>
-                    <small style="color:#6366f1;">${shop.CATEGORIES || 'General'}</small>
+                    <div style="margin-bottom:5px;">
+                        <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}
+                    </div>
+                    <small style="color:#fff; font-weight:bold;">${shop.CATEGORIES || 'General'}</small>
                     
-                    ${waLink ? `<a href="${waLink}" target="_blank" class="btn-action btn-wa">🟢 Contactar WhatsApp</a>` : ''}
-                    <a href="${reviewsLink}" target="_blank" class="btn-action btn-rev">🚩 Ver qué dicen (Quejas)</a>
+                    ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa">🟢 Contactar WhatsApp</a>` : 
+                    '<div style="margin-top:10px; font-size:11px; color:#94a3b8; text-align:center;">Sin teléfono disponible</div>'}
                 </div>
             `);
         }
@@ -118,7 +109,6 @@
             const initial = render();
             if (initial.length > 0) map.fitBounds(L.latLngBounds(initial), { padding: [50, 50] });
 
-            // FILTRO DE CATEGORÍAS
             const filterControl = L.control({ position: 'topleft' });
             filterControl.onAdd = () => {
                 const div = L.DomUtil.create('div', 'legend');
@@ -138,7 +128,6 @@
             filterControl.addTo(map);
         }
 
-        // LEYENDA
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
