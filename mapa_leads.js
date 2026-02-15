@@ -1,7 +1,7 @@
 window.SCRAPED_LEADS = [
   {
     "ADDRESS": "Viamonte 873",
-    "CATEGORIES": "",
+    "CATEGORIES": "Milanesas,Pizzas",
     "COMPANYNAME": "MUSOMECCI NATALIA DEL VALLE",
     "LAT": -26.811888,
     "LNG": -65.23813439999999,
@@ -13,7 +13,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Brandsen 2476, T4000 San Miguel de Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "ANA ROCIO DIEZ",
     "LAT": -26.8121654,
     "LNG": -65.2318678,
@@ -25,7 +25,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "628 Necochea",
-    "CATEGORIES": "",
+    "CATEGORIES": "Milanesas,Pizzas",
     "COMPANYNAME": "BUCCHERI GIANINA DANIELA",
     "LAT": -26.8155571,
     "LNG": -65.2364291,
@@ -37,7 +37,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Necochea 453",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas,Hamburguesas",
     "COMPANYNAME": "NIEVA EDGARDO ESTEBAN",
     "LAT": -26.8179999,
     "LNG": -65.23669149999999,
@@ -49,7 +49,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Don Bosco 2985",
-    "CATEGORIES": "",
+    "CATEGORIES": "Empanadas,Pizzas",
     "COMPANYNAME": "Marcelo Ferreyra Centurion",
     "LAT": -26.8187107,
     "LNG": -65.24101175,
@@ -61,7 +61,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Don Bosco 2225, T4000 San Miguel de Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Hamburguesas",
     "COMPANYNAME": "JUAN PABLO HERNANDEZ",
     "LAT": -26.8210147,
     "LNG": -65.2303142,
@@ -73,7 +73,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Avenida Ejercito del Norte 196",
-    "CATEGORIES": "",
+    "CATEGORIES": "Carnes",
     "COMPANYNAME": "ALIMENTAR SAN ISIDRO S. A. S.",
     "LAT": -26.8222587,
     "LNG": -65.2319124,
@@ -85,7 +85,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Colombia 2749, T4001 San Miguel De Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Milanesas,Pizzas",
     "COMPANYNAME": "LEIVA CLAUDIO RODRIGO",
     "LAT": -26.80017,
     "LNG": -65.2331738,
@@ -97,7 +97,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Bolivia 2011 T4000 San Miguel De Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Sándwiches",
     "COMPANYNAME": "BARRIONUEVO FRANCO DAVID",
     "LAT": -26.8069018,
     "LNG": -65.22315979999999,
@@ -109,7 +109,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Avenida Mate de Luna 2890",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "POSITANO S.R.L.",
     "LAT": -26.82340049743652,
     "LNG": -65.24099731445312,
@@ -121,7 +121,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. Mate de Luna 2890",
-    "CATEGORIES": "",
+    "CATEGORIES": "Cafetería",
     "COMPANYNAME": "POSITANO S.R.L.",
     "LAT": -26.8234005,
     "LNG": -65.24099731,
@@ -133,7 +133,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Don Bosco 3519, T4000 San Miguel de Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "ARQUEZ MARIA VICTORIA",
     "LAT": -26.8170178,
     "LNG": -65.2489065,
@@ -145,7 +145,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Crisóstomo Alvarez 2393, T4000 San Miguel de Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas,Empanadas",
     "COMPANYNAME": "COSTILLA ESTEBAN ALEJANDRO",
     "LAT": -26.8258402,
     "LNG": -65.2346687,
@@ -157,7 +157,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Avenida Mate de Luna 2196",
-    "CATEGORIES": "",
+    "CATEGORIES": "Empanadas,Pizzas",
     "COMPANYNAME": "Marcelo Sfriso",
     "LAT": -26.825664,
     "LNG": -65.23059805,
@@ -169,7 +169,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "AV. MATE DE LUNA 2098 LOCAL 4",
-    "CATEGORIES": "",
+    "CATEGORIES": "Empanadas",
     "COMPANYNAME": "GUZMÁN JUAN PABLO",
     "LAT": -26.82610195,
     "LNG": -65.22907515,
@@ -181,7 +181,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Colombia 3505",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "OLMOS JOSE MARIA",
     "LAT": -26.7983849,
     "LNG": -65.244565,
@@ -193,7 +193,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Pje. Edmundo de Amicis 1756",
-    "CATEGORIES": "",
+    "CATEGORIES": "Sándwiches,Pizzas",
     "COMPANYNAME": "ATZERI JULIO CESAR",
     "LAT": -26.80505867206428,
     "LNG": -65.21850333372953,
@@ -205,7 +205,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. América 1802",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "VALERA RAMIRO TOMAS",
     "LAT": -26.79751055,
     "LNG": -65.24519335,
@@ -217,7 +217,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. América 1800",
-    "CATEGORIES": "",
+    "CATEGORIES": "Sándwiches,Pizzas",
     "COMPANYNAME": "VALERA RAMIRO TOMAS",
     "LAT": -26.79747775,
     "LNG": -65.2452093,
@@ -229,7 +229,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Avenida Mate De Luna 1800",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas,Milanesas",
     "COMPANYNAME": "Bar de las Flores S.R.L",
     "LAT": -26.8263017,
     "LNG": -65.22561304999999,
@@ -241,7 +241,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. Mate de Luna 1800",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "Bar de las Flores S.R.L",
     "LAT": -26.826277700077,
     "LNG": -65.22552415,
@@ -253,7 +253,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "1904 Av. América",
-    "CATEGORIES": "",
+    "CATEGORIES": "Empanadas,Pizzas",
     "COMPANYNAME": "MAYANTZ REMES FRANCO MATIAS",
     "LAT": -26.7959582,
     "LNG": -65.24521189999999,
@@ -265,7 +265,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. República del Líbano 1197, T4000 San Miguel De Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Empanadas",
     "COMPANYNAME": "REBOLA RODOLFO SEBASTIAN",
     "LAT": -26.811904,
     "LNG": -65.2143335,
@@ -277,7 +277,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. Mitre 492, T4000 San Miguel De Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "NAZUR GONZALO",
     "LAT": -26.8213766,
     "LNG": -65.2170466,
@@ -289,7 +289,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Pasaje Bascary 4203 , barrio ciudad parque , código postal 4000",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "JORGE ALEJANDRO ALVAREDO",
     "LAT": -26.8125314,
     "LNG": -65.2560922,
@@ -301,7 +301,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Av. Mitre 432 Porton Gris, al lado de Pizarro., T4000IIK San Miguel de Tucumán, Argentina",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "AUGUSTO MAIDANA PRIVSEK",
     "LAT": -26.82212950185512,
     "LNG": -65.21714016137693,
@@ -313,7 +313,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "SARMIENTO 1308",
-    "CATEGORIES": "",
+    "CATEGORIES": "Milanesas,Pastas",
     "COMPANYNAME": "ROMERO DANTE RAFAEL",
     "LAT": -26.816507,
     "LNG": -65.2141449,
@@ -325,7 +325,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Suipacha",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "Palazzo Alfredo Luis",
     "LAT": -26.81649971008301,
     "LNG": -65.21399688720703,
@@ -337,7 +337,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "Batalla de Suipacha 1027",
-    "CATEGORIES": "",
+    "CATEGORIES": "Milanesas,Pastas",
     "COMPANYNAME": "GUILLERMO MARTIN ABDALA",
     "LAT": -26.8144491,
     "LNG": -65.2134243,
@@ -349,7 +349,7 @@ window.SCRAPED_LEADS = [
   },
   {
     "ADDRESS": "España 1293",
-    "CATEGORIES": "",
+    "CATEGORIES": "Pizzas",
     "COMPANYNAME": "ADRIMAR S.A.S.",
     "LAT": -26.81482145,
     "LNG": -65.21347245000001,
