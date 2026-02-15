@@ -4,12 +4,14 @@
     <title>scRappi BI - Heatmap Hunter</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    
     <style>
-        #map { height: 100vh; width: 100%; background: #f8fafc; }
+        #map { height: 100vh; width: 100%; background: #f0f2f5; }
         body { margin: 0; font-family: sans-serif; }
-        .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 12px; }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
@@ -19,66 +21,76 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    
     <script src="mapa_leads.js"></script>
 
     <script>
+        // 1. Inicializar Mapa
         const map = L.map('map').setView([4.6097, -74.0817], 12);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: 'scRappi BI'
+        }).addTo(map);
 
         const heatLayer = L.heatLayer([], { radius: 25, blur: 15 }).addTo(map);
-        const geocoder = L.Control.Geocoder.nominatim();
-
-        // Función para pausar la ejecución y no bloquear el geocodificador
-        const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-        function createMarker(lat, lng, shop) {
-            const rating = parseFloat(shop.RATING || 0);
-            const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
-            
-            return L.circleMarker([lat, lng], {
-                radius: 8, fillOpacity: 0.8, color: '#fff', weight: 2, fillColor: color
-            }).bindPopup(`<b>${shop.NAME}</b><br>📍 ${shop.ADDRESS}<br>⭐ Rating: ${rating}`);
+        
+        // 2. Verificar si hay datos
+        if (typeof window.SCRAPED_LEADS === 'undefined') {
+            alert("Error: No se encontró la data en mapa_leads.js");
         }
 
-        async function render(filter = "all") {
-            // Limpiar mapa
-            map.eachLayer(layer => { if (layer instanceof L.CircleMarker) map.removeLayer(layer); });
-            heatLayer.setLatLngs([]);
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
 
+        async function render() {
+            console.log("Iniciando renderizado de " + window.SCRAPED_LEADS.length + " locales.");
+            
             for (const shop of window.SCRAPED_LEADS) {
-                const cats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
-                if (filter !== "all" && !cats.includes(filter)) continue;
-
                 let lat = parseFloat(shop.LAT);
                 let lng = parseFloat(shop.LNG);
+                const rating = parseFloat(shop.RATING || 0);
+                const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
 
-                // SI TIENE COORDENADAS (Uber/PeYa)
+                // CASO A: Tiene coordenadas (Uber/PeYa o DiDi con GPS)
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    createMarker(lat, lng, shop).addTo(map);
+                    L.circleMarker([lat, lng], {
+                        radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
+                    }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>${shop.ADDRESS}`);
                     heatLayer.addLatLng([lat, lng, 0.5]);
                 } 
-                // SI ES DIDI (Solo dirección)
+                // CASO B: Solo tiene dirección (DiDi)
                 else if (shop.ADDRESS && shop.ADDRESS.length > 5) {
-                    // Esperamos un poco para no saturar el servicio gratuito de mapas
-                    await sleep(300); 
-                    geocoder.geocode(shop.ADDRESS + ", Bogota, Colombia", (results) => {
-                        if (results && results.length > 0) {
-                            const res = results[0].center;
-                            createMarker(res.lat, res.lng, shop).addTo(map);
-                            heatLayer.addLatLng([res.lat, res.lng, 0.5]);
+                    try {
+                        // Usamos una búsqueda directa por URL para evitar errores de librería
+                        const query = encodeURIComponent(shop.ADDRESS + ", Bogota, Colombia");
+                        const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
+                        const data = await resp.json();
+
+                        if (data && data.length > 0) {
+                            const foundLat = parseFloat(data[0].lat);
+                            const foundLng = parseFloat(data[0].lon);
+                            L.circleMarker([foundLat, foundLng], {
+                                radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
+                            }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>📍 Ubicado por dirección:<br>${shop.ADDRESS}`);
+                            heatLayer.addLatLng([foundLat, foundLng, 0.5]);
                         }
-                    });
+                        // Esperamos para que no nos bloqueen por velocidad
+                        await sleep(800); 
+                    } catch (err) {
+                        console.error("No se pudo ubicar: " + shop.NAME);
+                    }
                 }
             }
         }
 
-        if (window.SCRAPED_LEADS) render();
+        render();
 
         // Leyenda
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `<b>scRappi BI</b><br><span class="dot" style="background:#22c55e"></span> Top (4.5+)<br><span class="dot" style="background:#eab308"></span> Ok (4.0)<br><span class="dot" style="background:#ef4444"></span> Bajo`;
+            div.innerHTML = `<b>scRappi BI</b><br>
+                <span class="dot" style="background:#22c55e"></span> Top (4.5+)<br>
+                <span class="dot" style="background:#eab308"></span> Ok (4.0)<br>
+                <span class="dot" style="background:#ef4444"></span> Bajo`;
             return div;
         };
         legend.addTo(map);
