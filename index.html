@@ -130,17 +130,20 @@
             
             div.innerHTML = html;
             
-            div.onchange = (e) => {
+           div.onchange = (e) => {
                 const selected = e.target.value;
+                // Limpiamos los marcadores actuales del mapa
                 map.eachLayer(layer => { if(layer instanceof L.CircleMarker) map.removeLayer(layer); });
                 
                 window.SCRAPED_LEADS.forEach(shop => {
-                    // Ahora chequeamos si la categoría seleccionada está INCLUIDA en el texto
+                    // Convertimos las categorías en una lista para comparar
                     const shopCats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
                     
+                    // Si elegimos "Mostrar Todos" o si la categoría está en la lista del local
                     if (selected === "all" || shopCats.includes(selected)) {
                         const lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
                         if (!isNaN(lat) && !isNaN(lng)) {
+                            // Volvemos a dibujar el marcador
                             getMarker(lat, lng, parseFloat(shop.RATING || 0), shop).addTo(map);
                         }
                     }
