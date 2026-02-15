@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Visualizador scRappi PRO</title>
+    <title>scRappi BI - Map Intelligence</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
@@ -13,6 +13,7 @@
         #map { height: 100vh; width: 100%; background: #f8fafc; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
         
+        /* Contenedores de interfaz */
         .legend {
             background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 22px; color: #1e293b;
@@ -21,15 +22,27 @@
         .legend b { display: block; font-size: 14px; margin-bottom: 6px; color: #ff441f; }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
 
+        /* Botón de ubicación */
         .locate-button {
-            background: #fff; border: none; width: 40px; height: 40px;
+            background: #fff; border: none; width: 42px; height: 42px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-size: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
+        /* Botones de acción en el Popup */
+        .btn-action {
+            display: block; width: 100%; padding: 10px; margin-top: 8px;
+            border-radius: 8px; text-decoration: none; font-weight: bold;
+            font-size: 12px; text-align: center; color: white;
+        }
+        .btn-wa { background: #25D366; }
+        .btn-rev { background: #ff441f; }
+
+        /* Optimización Móvil */
         @media (max-width: 600px) {
             .legend { padding: 8px; font-size: 11px; max-width: 140px; }
-            .leaflet-popup-content { width: 180px !important; }
+            .leaflet-popup-content { width: 200px !important; margin: 10px; }
+            .legend-items { display: flex; flex-direction: row; gap: 8px; }
         }
     </style>
 </head>
@@ -50,9 +63,8 @@
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.Control.geocoder({ position: 'topleft', placeholder: 'Buscar zona...' }).addTo(map);
 
-        // Botón Ubicación
         const locateControl = L.control({ position: 'topright' });
-        locateControl.onAdd = function() {
+        locateControl.onAdd = () => {
             const btn = L.DomUtil.create('button', 'locate-button');
             btn.innerHTML = '🎯';
             btn.onclick = () => map.locate({ setView: true, maxZoom: 16 });
@@ -60,28 +72,38 @@
         };
         locateControl.addTo(map);
 
-        // Función para crear marcadores
+        // --- CEREBRO DE MARCADO Y CONTACTO ---
         function getMarker(lat, lng, rating, shop) {
             let color = rating >= 4.5 ? '#22c55e' : (rating >= 4.0 ? '#eab308' : '#ef4444');
+            
+            // Link WhatsApp
+            const cleanPhone = shop.PHONE ? shop.PHONE.replace(/\D/g, '') : '';
+            const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
+            
+            // Link Reseñas (PeYa usa /reviews)
+            const reviewsLink = shop.URL ? shop.URL.replace('-menu', '/reviews') : '#';
+
             return L.circleMarker([lat, lng], {
-                radius: 8, fillColor: color, color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.9
+                radius: 9, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9
             }).bindPopup(`
-                <b>${shop.NAME}</b><br>
-                <small>${shop.ADDRESS}</small><br>
-                <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}<br>
-                <small style="color:#ff441f">${shop.CATEGORIES || ''}</small>
+                <div style="min-width:180px;">
+                    <b style="font-size:15px;">${shop.NAME}</b><br>
+                    <small style="color:#64748b;">${shop.ADDRESS}</small><hr style="border:0;border-top:1px solid #eee">
+                    <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}<br>
+                    <small style="color:#6366f1;">${shop.CATEGORIES || 'General'}</small>
+                    
+                    ${waLink ? `<a href="${waLink}" target="_blank" class="btn-action btn-wa">🟢 Contactar WhatsApp</a>` : ''}
+                    <a href="${reviewsLink}" target="_blank" class="btn-action btn-rev">🚩 Ver qué dicen (Quejas)</a>
+                </div>
             `);
         }
 
-        // Carga inicial de puntos
-        function renderPoints(filter = "all") {
-            // Limpiar mapa
+        function render(filter = "all") {
             map.eachLayer(layer => { if(layer instanceof L.CircleMarker) map.removeLayer(layer); });
-
             const markers = [];
             window.SCRAPED_LEADS.forEach(shop => {
-                const shopCats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
-                if (filter === "all" || shopCats.includes(filter)) {
+                const cats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
+                if (filter === "all" || cats.includes(filter)) {
                     const lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
                     if (!isNaN(lat) && !isNaN(lng)) {
                         getMarker(lat, lng, parseFloat(shop.RATING || 0), shop).addTo(map);
@@ -93,39 +115,39 @@
         }
 
         if (window.SCRAPED_LEADS) {
-            const initialMarkers = renderPoints();
-            if (initialMarkers.length > 0) map.fitBounds(L.latLngBounds(initialMarkers), { padding: [50, 50] });
+            const initial = render();
+            if (initial.length > 0) map.fitBounds(L.latLngBounds(initial), { padding: [50, 50] });
 
-            // Filtro de Rubros
+            // FILTRO DE CATEGORÍAS
             const filterControl = L.control({ position: 'topleft' });
-            filterControl.onAdd = function() {
+            filterControl.onAdd = () => {
                 const div = L.DomUtil.create('div', 'legend');
                 let allCats = [];
                 window.SCRAPED_LEADS.forEach(s => {
                     if (s.CATEGORIES) allCats.push(...s.CATEGORIES.split(',').map(c => c.trim()));
                 });
                 const categories = [...new Set(allCats)].sort();
-
-                let html = '<b>Filtrar Rubro</b><br><select id="catFilter" style="width:100%; padding:5px; margin-top:5px;">';
-                html += '<option value="all">Mostrar Todos</option>';
-                categories.forEach(c => { html += `<option value="${c}">${c}</option>`; });
-                html += '</select>';
-                div.innerHTML = html;
-
-                div.onchange = (e) => renderPoints(e.target.value);
+                let h = '<b>Filtrar Rubro</b><select id="catFilter" style="width:100%; padding:6px; margin-top:5px; border-radius:6px; border:1px solid #ddd;">';
+                h += '<option value="all">Mostrar Todos</option>';
+                categories.forEach(c => { h += `<option value="${c}">${c}</option>`; });
+                h += '</select>';
+                div.innerHTML = h;
+                div.onchange = (e) => render(e.target.value);
                 return div;
             };
             filterControl.addTo(map);
         }
 
-        // Leyenda
+        // LEYENDA
         const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
+        legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `<b>ScRappi Map</b>
-                <span class="dot" style="background:#22c55e"></span> Top (4.5+)<br>
-                <span class="dot" style="background:#eab308"></span> Bueno (4.0-4.4)<br>
-                <span class="dot" style="background:#ef4444"></span> Bajo (< 4.0)`;
+            div.innerHTML = `<b>Referencias</b>
+                <div class="legend-items">
+                    <span><span class="dot" style="background:#22c55e"></span>Top</span>
+                    <span><span class="dot" style="background:#eab308"></span>Ok</span>
+                    <span><span class="dot" style="background:#ef4444"></span>Bajo</span>
+                </div>`;
             return div;
         };
         legend.addTo(map);
