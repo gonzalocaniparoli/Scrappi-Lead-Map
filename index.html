@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>scRappi BI - Mapa de Leads Pro</title>
+    <title>scRappi BI - Mapa Inteligente</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         #map { height: 100vh; width: 100%; background: #f0f2f5; }
         body { margin: 0; font-family: sans-serif; }
-        .legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
@@ -20,17 +20,13 @@
     <script src="mapa_leads.js"></script>
 
     <script>
-        // 1. Inicializar Mapa (Vista temporal, se ajustará sola)
         const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
         const heatLayer = L.heatLayer([], { radius: 25, blur: 15 }).addTo(map);
-
         const sleep = ms => new Promise(res => setTimeout(res, ms));
 
         async function render() {
-            if (typeof window.SCRAPED_LEADS === 'undefined' || window.SCRAPED_LEADS.length === 0) {
-                return alert("No hay datos en mapa_leads.js");
-            }
+            if (typeof window.SCRAPED_LEADS === 'undefined' || window.SCRAPED_LEADS.length === 0) return;
 
             let firstPointSet = false;
 
@@ -40,20 +36,22 @@
                 const rating = parseFloat(shop.RATING || 0);
                 const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
 
-                // Si tiene coordenadas nativas (PeYa / Uber)
+                // CASO 1: YA TIENE COORDENADAS (PeYa / Uber)
                 if (!isNaN(lat) && !isNaN(lng)) {
                     if (!firstPointSet) { map.setView([lat, lng], 14); firstPointSet = true; }
-                    
-                    L.circleMarker([lat, lng], {
-                        radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
-                    }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>${shop.ADDRESS}`);
+                    L.circleMarker([lat, lng], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 })
+                        .addTo(map).bindPopup(`<b>${shop.NAME}</b><br>${shop.ADDRESS}`);
                     heatLayer.addLatLng([lat, lng, 0.5]);
                 } 
-                // Si no tiene coordenadas pero tiene dirección (DiDi / Otros)
-                else if (shop.ADDRESS && shop.ADDRESS.length > 5) {
+                // CASO 2: SOLO DIRECCIÓN (DiDi) -> Aplicamos Ancla de Ciudad
+                else if (shop.ADDRESS && shop.ADDRESS.length > 3) {
                     try {
-                        // Buscamos la dirección en cualquier parte del mundo
-                        const query = encodeURIComponent(shop.ADDRESS);
+                        // Detectamos contexto: si la URL tiene 'bogota' o 'co' buscamos en Bogotá, si no, buscamos libre
+                        let context = "";
+                        if (shop.URL.includes("/bogota/") || shop.URL.includes("/co/")) context = ", Bogota, Colombia";
+                        if (shop.URL.includes(".com.ar/")) context = ", Tucuman, Argentina";
+
+                        const query = encodeURIComponent(shop.ADDRESS + context);
                         const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
                         const data = await resp.json();
 
@@ -63,20 +61,18 @@
                             
                             if (!firstPointSet) { map.setView([foundLat, foundLng], 14); firstPointSet = true; }
 
-                            L.circleMarker([foundLat, foundLng], {
-                                radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
-                            }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>📍 Ubicado por dirección:<br>${shop.ADDRESS}`);
+                            L.circleMarker([foundLat, foundLng], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 })
+                                .addTo(map).bindPopup(`<b>${shop.NAME}</b><br>📍 Ubicado en ${context.replace(', ','')}:<br>${shop.ADDRESS}`);
                             heatLayer.addLatLng([foundLat, foundLng, 0.5]);
                         }
-                        await sleep(800); // Pausa para no saturar el servicio gratuito
-                    } catch (err) { console.error("Error ubicando: " + shop.NAME); }
+                        await sleep(1000); // Pausa necesaria para no ser bloqueados
+                    } catch (err) { console.error("Fallo ubicando: " + shop.NAME); }
                 }
             }
         }
 
         render();
 
-        // Leyenda
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
