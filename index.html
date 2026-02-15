@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>scRappi BI - Mapa Inteligente</title>
+    <title>scRappi BI - Mapa Universal</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -25,6 +25,27 @@
         const heatLayer = L.heatLayer([], { radius: 25, blur: 15 }).addTo(map);
         const sleep = ms => new Promise(res => setTimeout(res, ms));
 
+        // Función para detectar Ciudad y País desde la URL
+        function getGeoContext(url) {
+            let city = "";
+            let country = "";
+
+            if (url.includes("pedidosya.com.ar")) country = "Argentina";
+            else if (url.includes("pedidosya.com.uy")) country = "Uruguay";
+            else if (url.includes("didiglobal.com/co") || url.includes("ubereats.com")) country = ""; // Dejar que la URL mande
+
+            // Extraer la ciudad de la URL (usualmente está entre slashes)
+            const parts = url.split('/');
+            if (url.includes("didiglobal")) {
+                city = parts[6] || ""; // En DiDi: co/food/CIUDAD/
+            } else if (url.includes("pedidosya")) {
+                // En PeYa la ciudad suele estar después de /restaurantes/ si no hay coordenadas
+                city = parts[4] || ""; 
+            }
+            
+            return city ? `, ${city}, ${country}` : `, ${country}`;
+        }
+
         async function render() {
             if (typeof window.SCRAPED_LEADS === 'undefined' || window.SCRAPED_LEADS.length === 0) return;
 
@@ -36,37 +57,33 @@
                 const rating = parseFloat(shop.RATING || 0);
                 const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
 
-                // CASO 1: YA TIENE COORDENADAS (PeYa / Uber)
+                // 1. TIENE COORDENADAS (PeYa/Uber OK)
                 if (!isNaN(lat) && !isNaN(lng)) {
                     if (!firstPointSet) { map.setView([lat, lng], 14); firstPointSet = true; }
                     L.circleMarker([lat, lng], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 })
                         .addTo(map).bindPopup(`<b>${shop.NAME}</b><br>${shop.ADDRESS}`);
                     heatLayer.addLatLng([lat, lng, 0.5]);
                 } 
-                // CASO 2: SOLO DIRECCIÓN (DiDi) -> Aplicamos Ancla de Ciudad
+                // 2. SOLO DIRECCIÓN (DiDi o Uber sin GPS)
                 else if (shop.ADDRESS && shop.ADDRESS.length > 3) {
                     try {
-                        // Detectamos contexto: si la URL tiene 'bogota' o 'co' buscamos en Bogotá, si no, buscamos libre
-                        let context = "";
-                        if (shop.URL.includes("/bogota/") || shop.URL.includes("/co/")) context = ", Bogota, Colombia";
-                        if (shop.URL.includes(".com.ar/")) context = ", Tucuman, Argentina";
-
+                        const context = getGeoContext(shop.URL);
                         const query = encodeURIComponent(shop.ADDRESS + context);
                         const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
                         const data = await resp.json();
 
                         if (data && data.length > 0) {
-                            const foundLat = parseFloat(data[0].lat);
-                            const foundLng = parseFloat(data[0].lon);
+                            const fLat = parseFloat(data[0].lat);
+                            const fLng = parseFloat(data[0].lon);
                             
-                            if (!firstPointSet) { map.setView([foundLat, foundLng], 14); firstPointSet = true; }
+                            if (!firstPointSet) { map.setView([fLat, fLng], 14); firstPointSet = true; }
 
-                            L.circleMarker([foundLat, foundLng], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 })
+                            L.circleMarker([fLat, fLng], { radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8 })
                                 .addTo(map).bindPopup(`<b>${shop.NAME}</b><br>📍 Ubicado en ${context.replace(', ','')}:<br>${shop.ADDRESS}`);
-                            heatLayer.addLatLng([foundLat, foundLng, 0.5]);
+                            heatLayer.addLatLng([fLat, fLng, 0.5]);
                         }
-                        await sleep(1000); // Pausa necesaria para no ser bloqueados
-                    } catch (err) { console.error("Fallo ubicando: " + shop.NAME); }
+                        await sleep(1000); 
+                    } catch (err) { console.error("Error: " + shop.NAME); }
                 }
             }
         }
