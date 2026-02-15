@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>scRappi BI - Heatmap Hunter</title>
+    <title>scRappi BI - Mapa de Leads Pro</title>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    
     <style>
         #map { height: 100vh; width: 100%; background: #f0f2f5; }
         body { margin: 0; font-family: sans-serif; }
-        .legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 12px; }
+        .legend { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
@@ -20,63 +17,59 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-    
     <script src="mapa_leads.js"></script>
 
     <script>
-        // 1. Inicializar Mapa
-        const map = L.map('map').setView([4.6097, -74.0817], 12);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: 'scRappi BI'
-        }).addTo(map);
-
+        // 1. Inicializar Mapa (Vista temporal, se ajustará sola)
+        const map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
         const heatLayer = L.heatLayer([], { radius: 25, blur: 15 }).addTo(map);
-        
-        // 2. Verificar si hay datos
-        if (typeof window.SCRAPED_LEADS === 'undefined') {
-            alert("Error: No se encontró la data en mapa_leads.js");
-        }
 
         const sleep = ms => new Promise(res => setTimeout(res, ms));
 
         async function render() {
-            console.log("Iniciando renderizado de " + window.SCRAPED_LEADS.length + " locales.");
-            
+            if (typeof window.SCRAPED_LEADS === 'undefined' || window.SCRAPED_LEADS.length === 0) {
+                return alert("No hay datos en mapa_leads.js");
+            }
+
+            let firstPointSet = false;
+
             for (const shop of window.SCRAPED_LEADS) {
                 let lat = parseFloat(shop.LAT);
                 let lng = parseFloat(shop.LNG);
                 const rating = parseFloat(shop.RATING || 0);
                 const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
 
-                // CASO A: Tiene coordenadas (Uber/PeYa o DiDi con GPS)
+                // Si tiene coordenadas nativas (PeYa / Uber)
                 if (!isNaN(lat) && !isNaN(lng)) {
+                    if (!firstPointSet) { map.setView([lat, lng], 14); firstPointSet = true; }
+                    
                     L.circleMarker([lat, lng], {
                         radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
                     }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>${shop.ADDRESS}`);
                     heatLayer.addLatLng([lat, lng, 0.5]);
                 } 
-                // CASO B: Solo tiene dirección (DiDi)
+                // Si no tiene coordenadas pero tiene dirección (DiDi / Otros)
                 else if (shop.ADDRESS && shop.ADDRESS.length > 5) {
                     try {
-                        // Usamos una búsqueda directa por URL para evitar errores de librería
-                        const query = encodeURIComponent(shop.ADDRESS + ", Bogota, Colombia");
+                        // Buscamos la dirección en cualquier parte del mundo
+                        const query = encodeURIComponent(shop.ADDRESS);
                         const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`);
                         const data = await resp.json();
 
                         if (data && data.length > 0) {
                             const foundLat = parseFloat(data[0].lat);
                             const foundLng = parseFloat(data[0].lon);
+                            
+                            if (!firstPointSet) { map.setView([foundLat, foundLng], 14); firstPointSet = true; }
+
                             L.circleMarker([foundLat, foundLng], {
                                 radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.8
                             }).addTo(map).bindPopup(`<b>${shop.NAME}</b><br>📍 Ubicado por dirección:<br>${shop.ADDRESS}`);
                             heatLayer.addLatLng([foundLat, foundLng, 0.5]);
                         }
-                        // Esperamos para que no nos bloqueen por velocidad
-                        await sleep(800); 
-                    } catch (err) {
-                        console.error("No se pudo ubicar: " + shop.NAME);
-                    }
+                        await sleep(800); // Pausa para no saturar el servicio gratuito
+                    } catch (err) { console.error("Error ubicando: " + shop.NAME); }
                 }
             }
         }
