@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>scRappi BI - Map Intelligence</title>
+    <title>scRappi BI - Heatmap Hunter</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
@@ -14,12 +14,12 @@
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
         
         .legend {
-            background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 22px; color: #1e293b;
-            backdrop-filter: blur(5px); border: 1px solid #e2e8f0; font-size: 13px;
+            background: rgba(255, 255, 255, 0.95); padding: 10px; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 20px; color: #1e293b;
+            backdrop-filter: blur(5px); border: 1px solid #e2e8f0; font-size: 12px;
         }
-        .legend b { display: block; font-size: 14px; margin-bottom: 6px; color: #ff441f; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+        .legend b { display: block; font-size: 13px; margin-bottom: 4px; color: #ff441f; }
+        .dot { height: 9px; width: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
 
         .locate-button {
             background: #fff; border: none; width: 42px; height: 42px;
@@ -35,8 +35,8 @@
         }
 
         @media (max-width: 600px) {
-            .legend { padding: 8px; font-size: 11px; max-width: 140px; }
-            .leaflet-popup-content { width: 180px !important; margin: 10px; }
+            .legend { padding: 8px; font-size: 10px; max-width: 140px; }
+            .leaflet-popup-content { width: 180px !important; }
             .legend-items { display: flex; flex-direction: row; gap: 8px; }
         }
     </style>
@@ -46,6 +46,7 @@
     
     <script src="mapa_leads.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
     <script>
@@ -58,19 +59,18 @@
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.Control.geocoder({ position: 'topleft', placeholder: 'Buscar zona...' }).addTo(map);
 
-        // BOTÓN UBICACIÓN CORREGIDO
+        // Capa de calor global
+        let heatLayer = L.heatLayer([], {radius: 25, blur: 15, maxZoom: 17}).addTo(map);
+
         const locateControl = L.control({ position: 'topright' });
         locateControl.onAdd = () => {
             const btn = L.DomUtil.create('button', 'locate-button');
             btn.innerHTML = '🎯';
-            btn.onclick = () => {
-                map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
-            };
+            btn.onclick = () => map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
             return btn;
         };
         locateControl.addTo(map);
 
-        // ESCUCHADOR DE GPS
         map.on('locationfound', (e) => {
             map.setView(e.latlng, 16);
             L.circle(e.latlng, { radius: 12, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.4 }).addTo(map);
@@ -82,18 +82,14 @@
             const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
 
             return L.circleMarker([lat, lng], {
-                radius: 9, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9
+                radius: 8, fillColor: color, color: "#fff", weight: 2, fillOpacity: 0.9
             }).bindPopup(`
                 <div style="min-width:160px;">
-                    <b style="font-size:15px;">${shop.NAME}</b><br>
+                    <b>${shop.NAME}</b><br>
                     <small style="color:#64748b;">${shop.ADDRESS}</small><hr style="border:0;border-top:1px solid #eee">
-                    <div style="margin-bottom:5px;">
-                        <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}
-                    </div>
+                    <b>⭐ ${shop.RATING || 'N/A'}</b> | 💬 ${shop.REVIEWS || '0'}<br>
                     <small style="color:#6366f1; font-weight:bold;">${shop.CATEGORIES || 'General'}</small>
-                    
-                    ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa">🟢 Contactar WhatsApp</a>` : 
-                    '<div style="margin-top:10px; font-size:11px; color:#94a3b8; text-align:center;">Sin teléfono disponible</div>'}
+                    ${waLink ? `<a href="${waLink}" target="_blank" class="btn-wa">🟢 WhatsApp</a>` : ''}
                 </div>
             `);
         }
@@ -101,6 +97,8 @@
         function render(filter = "all") {
             map.eachLayer(layer => { if(layer instanceof L.CircleMarker) map.removeLayer(layer); });
             const markers = [];
+            const heatData = [];
+            
             window.SCRAPED_LEADS.forEach(shop => {
                 const cats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
                 if (filter === "all" || cats.includes(filter)) {
@@ -108,9 +106,11 @@
                     if (!isNaN(lat) && !isNaN(lng)) {
                         getMarker(lat, lng, parseFloat(shop.RATING || 0), shop).addTo(map);
                         markers.push([lat, lng]);
+                        heatData.push([lat, lng, 0.5]); // Intensidad del calor
                     }
                 }
             });
+            heatLayer.setLatLngs(heatData); // Actualiza el mapa de calor
             return markers;
         }
 
@@ -126,8 +126,8 @@
                     if (s.CATEGORIES) allCats.push(...s.CATEGORIES.split(',').map(c => c.trim()));
                 });
                 const categories = [...new Set(allCats)].sort();
-                let h = '<b>Filtrar Rubro</b><select id="catFilter" style="width:100%; padding:6px; margin-top:5px; border-radius:6px; border:1px solid #ddd;">';
-                h += '<option value="all">Mostrar Todos</option>';
+                let h = '<b>Rubro</b><select id="catFilter" style="width:100%; padding:4px; margin-top:4px;">';
+                h += '<option value="all">Todos</option>';
                 categories.forEach(c => { h += `<option value="${c}">${c}</option>`; });
                 h += '</select>';
                 div.innerHTML = h;
@@ -140,7 +140,7 @@
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `<b>Referencias</b>
+            div.innerHTML = `<b>scRappi BI</b>
                 <div class="legend-items">
                     <span><span class="dot" style="background:#22c55e"></span>Top</span>
                     <span><span class="dot" style="background:#eab308"></span>Ok</span>
