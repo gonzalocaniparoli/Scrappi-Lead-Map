@@ -1,37 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Visualizador scRappi PRO - Mapa </title>
+    <title>scRappi BI Pro - Intelligence Map</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        #map { height: 100vh; width: 100%; background: #f8fafc; }
+        #map { height: 100vh; width: 100%; background: #f1f5f9; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
         
-        /* Leyenda Estilizada */
         .legend {
-            background: rgba(255, 255, 255, 0.95); padding: 12px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 22px; color: #1e293b;
-            backdrop-filter: blur(5px); border: 1px solid #e2e8f0; font-size: 13px;
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); line-height: 24px; color: #1e293b;
+            border: 1px solid #e2e8f0; font-size: 13px;
         }
-        .legend b { display: block; font-size: 14px; margin-bottom: 6px; color: #ff441f; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid rgba(0,0,0,0.1); }
+        .legend b { display: block; font-size: 14px; margin-bottom: 8px; color: #ff441f; }
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; }
 
-        /* Botón de ubicación personalizado */
         .locate-button {
-            background: #fff; border: none; width: 40px; height: 40px;
+            background: #fff; border: none; width: 44px; height: 44px;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-size: 22px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        .locate-button:active { background: #f1f5f9; }
 
-        /* Marcador de usuario (Punto azul) */
-        .user-location-dot {
-            width: 14px; height: 14px; background: #3b82f6;
-            border: 3px solid white; border-radius: 50%;
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        /* Estilo para los Popups Pro */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
+        .popup-badge { 
+            background: #f1f5f9; padding: 4px 8px; border-radius: 6px; 
+            font-size: 10px; font-weight: bold; color: #475569; text-transform: uppercase;
         }
     </style>
 </head>
@@ -40,85 +40,77 @@
     
     <script src="mapa_leads.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://leaflet.github.io/Leaflet.heat/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
     <script>
-        const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
-        
-        // Capa base clara (CartoDB Positron)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; CARTO'
-        }).addTo(map);
+        // Capas Base
+        const light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '©CARTO' });
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '©Esri' });
 
+        const map = L.map('map', { 
+            zoomControl: false,
+            layers: [light] // Empieza con el mapa claro
+        }).setView([0, 0], 2);
+
+        // Control de Capas
+        const baseMaps = { "Calles": light, "Satélite": satellite };
+        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
-        // --- FUNCIÓN CERCA DE MÍ ---
+        // Buscador de Direcciones
+        L.Control.geocoder({ position: 'topleft', placeholder: 'Buscar zona...' }).addTo(map);
+
+        // Botón Ubicación
         const locateControl = L.control({ position: 'topright' });
-        locateControl.onAdd = function() {
+        locateControl.onAdd = () => {
             const btn = L.DomUtil.create('button', 'locate-button');
             btn.innerHTML = '🎯';
-            btn.onclick = function() {
-                map.locate({ setView: true, maxZoom: 16 });
-            };
+            btn.onclick = () => map.locate({ setView: true, maxZoom: 16 });
             return btn;
         };
         locateControl.addTo(map);
 
-        let userMarker;
-        map.on('locationfound', (e) => {
-            if (userMarker) map.removeLayer(userMarker);
-            const userIcon = L.divIcon({ className: 'user-location-dot', iconSize: [14, 14] });
-            userMarker = L.marker(e.latlng, { icon: userIcon }).addTo(map).bindPopup("Estás aquí").openPopup();
-        });
-
-        map.on('locationerror', () => alert("No se pudo obtener tu ubicación. Verifica los permisos de GPS."));
-
-        // --- RENDERIZADO DE LEADS ---
-        function getMarker(lat, lng, rating, shop) {
-            let color = rating >= 4.5 ? '#22c55e' : (rating >= 4.0 ? '#eab308' : '#ef4444');
-            
-            return L.circleMarker([lat, lng], {
-                radius: 8, fillColor: color, color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.9
-            }).bindPopup(`
-                <div style="min-width:160px;">
-                    <b style="font-size:14px;">${shop.NAME}</b><br>
-                    <span style="color:#64748b; font-size:12px;">${shop.ADDRESS}</span><hr style="border:0;border-top:1px solid #eee">
-                    <div style="display:flex; justify-content:space-between;">
-                        <b>⭐ ${shop.RATING || 'N/A'}</b>
-                        <b>💬 ${shop.REVIEWS || '0'}</b>
+        // Renderizado de Leads
+        function createPopup(shop) {
+            return `
+                <div style="min-width:180px;">
+                    <div style="margin-bottom:8px;"><span class="popup-badge">${shop.CITY || 'Local'}</span></div>
+                    <b style="font-size:15px; color:#0f172a;">${shop.NAME}</b><br>
+                    <span style="color:#64748b; font-size:12px;">📍 ${shop.ADDRESS}</span><hr style="border:0; border-top:1px solid #f1f5f9; margin:10px 0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size:16px;">⭐ <b>${shop.RATING || 'N/A'}</b></span>
+                        <span style="font-size:12px; color:#94a3b8;">💬 ${shop.REVIEWS || '0'} reviews</span>
                     </div>
+                    <a href="${shop.URL}" target="_blank" style="display:block; margin-top:10px; text-align:center; background:#ff441f; color:white; text-decoration:none; padding:6px; border-radius:6px; font-size:12px; font-weight:bold;">Ver en Tienda</a>
                 </div>
-            `);
+            `;
         }
 
-        if (window.SCRAPED_LEADS && window.SCRAPED_LEADS.length > 0) {
-            const heatData = [];
+        if (window.SCRAPED_LEADS) {
             const markers = [];
-
             window.SCRAPED_LEADS.forEach(shop => {
-                const lat = parseFloat(shop.LAT);
-                const lng = parseFloat(shop.LNG);
+                const lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
                 const rating = parseFloat(shop.RATING || 0);
 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    getMarker(lat, lng, rating, shop).addTo(map);
-                    heatData.push([lat, lng, 0.5]); 
+                    let color = rating >= 4.5 ? '#22c55e' : (rating >= 4.0 ? '#f59e0b' : '#ef4444');
+                    L.circleMarker([lat, lng], {
+                        radius: 9, fillColor: color, color: "#fff", weight: 2.5, fillOpacity: 0.9
+                    }).bindPopup(createPopup(shop)).addTo(map);
                     markers.push([lat, lng]);
                 }
             });
-
-            L.heatLayer(heatData, { radius: 25, blur: 15, max: 1.0 }).addTo(map);
             if (markers.length > 0) map.fitBounds(L.latLngBounds(markers), { padding: [50, 50] });
         }
 
-        // LEYENDA
+        // Leyenda
         const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function() {
+        legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `<b>ScRappi Map BI</b>
-                <span class="dot" style="background:#22c55e"></span> Top (4.5+)<br>
-                <span class="dot" style="background:#eab308"></span> Bueno (4.0-4.4)<br>
-                <span class="dot" style="background:#ef4444"></span> Bajo (< 4.0)`;
+            div.innerHTML = `<b>scRappi Intelligence</b>
+                <span class="dot" style="background:#22c55e"></span> Top Performers (4.5+)<br>
+                <span class="dot" style="background:#f59e0b"></span> Potencial (4.0-4.4)<br>
+                <span class="dot" style="background:#ef4444"></span> Oportunidad (< 4.0)`;
             return div;
         };
         legend.addTo(map);
