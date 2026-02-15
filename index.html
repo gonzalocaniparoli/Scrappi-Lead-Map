@@ -4,25 +4,13 @@
     <title>scRappi BI - Heatmap Hunter</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    
     <style>
         #map { height: 100vh; width: 100%; background: #f8fafc; }
-        body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
-        
-        .legend {
-            background: rgba(255, 255, 255, 0.95); padding: 10px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 20px; color: #1e293b;
-            backdrop-filter: blur(5px); border: 1px solid #e2e8f0; font-size: 13px;
-        }
+        body { margin: 0; font-family: sans-serif; }
+        .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .popup-card { padding: 5px; min-width: 200px; }
-        .popup-card b { color: #ff441f; font-size: 14px; }
-        .popup-card p { margin: 4px 0; color: #64748b; font-size: 12px; }
-        .badge { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #475569; }
     </style>
 </head>
 <body>
@@ -35,104 +23,62 @@
 
     <script>
         const map = L.map('map').setView([4.6097, -74.0817], 12);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-        const heatLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 17 }).addTo(map);
+        const heatLayer = L.heatLayer([], { radius: 25, blur: 15 }).addTo(map);
         const geocoder = L.Control.Geocoder.nominatim();
 
-        function getMarker(lat, lng, rating, shop) {
+        // Función para pausar la ejecución y no bloquear el geocodificador
+        const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+        function createMarker(lat, lng, shop) {
+            const rating = parseFloat(shop.RATING || 0);
             const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
-            const marker = L.circleMarker([lat, lng], {
-                radius: 8, fillOpacity: 0.8, color: '#fff', weight: 2, fillColor: color
-            });
             
-            marker.bindPopup(`
-                <div class="popup-card">
-                    <b>${shop.NAME}</b>
-                    <p>📍 ${shop.ADDRESS || 'Sin dirección'}</p>
-                    <p>⭐ Rating: ${rating}</p>
-                    <span class="badge">${shop.CATEGORIES || 'Restaurante'}</span>
-                    <br><br>
-                    <a href="${shop.URL}" target="_blank" style="color:#2196f3; font-size:11px;">Ver en plataforma</a>
-                </div>
-            `);
-            return marker;
+            return L.circleMarker([lat, lng], {
+                radius: 8, fillOpacity: 0.8, color: '#fff', weight: 2, fillColor: color
+            }).bindPopup(`<b>${shop.NAME}</b><br>📍 ${shop.ADDRESS}<br>⭐ Rating: ${rating}`);
         }
 
         async function render(filter = "all") {
-            // Limpiar marcadores actuales (excepto el tileLayer y heatLayer)
-            map.eachLayer(layer => {
-                if (layer instanceof L.CircleMarker) map.removeLayer(layer);
-            });
-
-            const heatData = [];
+            // Limpiar mapa
+            map.eachLayer(layer => { if (layer instanceof L.CircleMarker) map.removeLayer(layer); });
+            heatLayer.setLatLngs([]);
 
             for (const shop of window.SCRAPED_LEADS) {
                 const cats = shop.CATEGORIES ? shop.CATEGORIES.split(',').map(c => c.trim()) : [];
-                
-                if (filter === "all" || cats.includes(filter)) {
-                    let lat = parseFloat(shop.LAT);
-                    let lng = parseFloat(shop.LNG);
+                if (filter !== "all" && !cats.includes(filter)) continue;
 
-                    // CASO 1: Ya tenemos coordenadas (PedidosYa / Uber)
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        getMarker(lat, lng, parseFloat(shop.RATING || 0), shop).addTo(map);
-                        heatData.push([lat, lng, 0.5]);
-                    } 
-                    // CASO 2: No hay coordenadas, pero hay dirección (DiDi Food)
-                    else if (shop.ADDRESS && shop.ADDRESS.length > 5) {
-                        // Buscamos la dirección agregando ", Bogota" para precisión
-                        geocoder.geocode(shop.ADDRESS + ", Bogota, Colombia", (results) => {
-                            if (results && results.length > 0) {
-                                const res = results[0].center;
-                                getMarker(res.lat, res.lng, parseFloat(shop.RATING || 0), shop).addTo(map);
-                                // Actualizamos el mapa de calor dinámicamente
-                                heatLayer.addLatLng([res.lat, res.lng, 0.5]);
-                            }
-                        });
-                    }
+                let lat = parseFloat(shop.LAT);
+                let lng = parseFloat(shop.LNG);
+
+                // SI TIENE COORDENADAS (Uber/PeYa)
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    createMarker(lat, lng, shop).addTo(map);
+                    heatLayer.addLatLng([lat, lng, 0.5]);
+                } 
+                // SI ES DIDI (Solo dirección)
+                else if (shop.ADDRESS && shop.ADDRESS.length > 5) {
+                    // Esperamos un poco para no saturar el servicio gratuito de mapas
+                    await sleep(300); 
+                    geocoder.geocode(shop.ADDRESS + ", Bogota, Colombia", (results) => {
+                        if (results && results.length > 0) {
+                            const res = results[0].center;
+                            createMarker(res.lat, res.lng, shop).addTo(map);
+                            heatLayer.addLatLng([res.lat, res.lng, 0.5]);
+                        }
+                    });
                 }
             }
-            heatLayer.setLatLngs(heatData);
         }
 
-        if (window.SCRAPED_LEADS) {
-            render();
-            
-            // Añadir Filtro de Categorías
-            const filterControl = L.control({ position: 'topright' });
-            filterControl.onAdd = () => {
-                const div = L.DomUtil.create('div', 'legend');
-                let allCats = [];
-                window.SCRAPED_LEADS.forEach(s => {
-                    if (s.CATEGORIES) allCats.push(...s.CATEGORIES.split(',').map(c => c.trim()));
-                });
-                const categories = [...new Set(allCats)].sort();
-                
-                let h = '<b>Filtrar Rubro</b><select id="catFilter" style="width:100%; padding:4px; margin-top:4px;">';
-                h += '<option value="all">Todos</option>';
-                categories.forEach(c => { h += `<option value="${c}">${c}</option>`; });
-                h += '</select>';
-                
-                div.innerHTML = h;
-                div.onchange = (e) => render(e.target.value);
-                return div;
-            };
-            filterControl.addTo(map);
-        }
+        if (window.SCRAPED_LEADS) render();
 
-        // Leyenda de colores
+        // Leyenda
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <b>scRappi BI</b><br>
-                <span class="dot" style="background:#22c55e"></span> Top (4.5+)<br>
-                <span class="dot" style="background:#eab308"></span> Ok (4.0 - 4.4)<br>
-                <span class="dot" style="background:#ef4444"></span> Bajo (< 4.0)
-            `;
+            div.innerHTML = `<b>scRappi BI</b><br><span class="dot" style="background:#22c55e"></span> Top (4.5+)<br><span class="dot" style="background:#eab308"></span> Ok (4.0)<br><span class="dot" style="background:#ef4444"></span> Bajo`;
             return div;
         };
         legend.addTo(map);
