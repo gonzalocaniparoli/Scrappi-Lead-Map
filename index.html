@@ -78,24 +78,38 @@
         let heatLayer = null;
         let showHeat = false;
 
-        // --- GPS ---
+// --- GPS (Optimizado para Celular) ---
         let userMarker = null;
         const locateControl = L.control({ position: 'bottomright' });
+        
         locateControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'locate-btn');
             div.innerHTML = '📍'; 
+            div.title = "Mi ubicación";
+            div.style.fontSize = '24px'; // Más grande para el dedo
+            
             div.onclick = function(e) {
                 e.stopPropagation();
-                map.locate({ setView: true, maxZoom: 16 });
+                // Forzamos la petición de permiso
+                map.locate({ 
+                    setView: true, 
+                    maxZoom: 16,
+                    enableHighAccuracy: true // Usa GPS real, no solo WiFi
+                });
             };
             return div;
         };
         locateControl.addTo(map);
 
+        // Si el usuario rechaza o hay error (ej: no hay HTTPS)
+        map.on('locationerror', (e) => {
+            alert("Error de GPS: Asegúrate de estar usando HTTPS o dar permisos de ubicación al navegador.");
+        });
+
         map.on('locationfound', (e) => {
             if (userMarker) map.removeLayer(userMarker);
             userMarker = L.circleMarker(e.latlng, {
-                radius: 10, fillColor: '#3b82f6', color: '#fff', weight: 3, fillOpacity: 1
+                radius: 12, fillColor: '#3b82f6', color: '#fff', weight: 4, fillOpacity: 0.9
             }).addTo(map).bindPopup("Estás aquí").openPopup();
         });
 
