@@ -24,15 +24,14 @@
             font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px;
         }
         
-        /* Botón GPS Reforzado para que no lo tape la leyenda en el celu */
+        /* Botón GPS en el lado izquierdo */
         .locate-btn {
-            background: #fff; width: 50px; height: 50px; line-height: 50px;
+            background: #fff; width: 44px; height: 44px; line-height: 44px;
             text-align: center; border-radius: 50%; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-size: 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 22px;
             display: flex; align-items: center; justify-content: center;
-            border: 3px solid #ff4d4d; color: #ff4d4d;
-            position: relative;
-            z-index: 2000 !important; /* Capa superior absoluta */
+            border: 2px solid #ff4d4d; color: #ff4d4d;
+            margin-bottom: 10px; /* Espacio respecto al zoom */
         }
 
         .legend b { display: block; margin-bottom: 5px; color: #000; font-size: 12px; }
@@ -61,12 +60,10 @@
         button.map-toggle { background: #f8fafc; font-weight: 600; border: 1px solid #ff4d4d; color: #ff4d4d; }
         button.map-toggle.active { background: #ff4d4d; color: white; }
 
-        /* Ajustes para pantallas pequeñas */
         @media (max-width: 600px) {
-            .legend { max-width: 140px; padding: 8px; font-size: 10px; }
-            /* Desplazamos los controles de la derecha hacia arriba para que el botón GPS no choque */
-            .leaflet-right .leaflet-control { margin-right: 10px; }
-            .leaflet-bottom.leaflet-right { margin-bottom: 130px; } 
+            .legend { min-width: 140px; padding: 10px; }
+            /* Aseguramos que el zoom y gps a la izquierda no se tapen con la marca de agua */
+            .leaflet-bottom.leaflet-left { margin-bottom: 40px; }
         }
     </style>
 </head>
@@ -80,32 +77,28 @@
     <script src="mapa_leads.js"></script>
 
     <script>
+        // Inicialización
         const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+        
+        // El Zoom ahora va a estar abajo a la izquierda
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-        
         const markers = L.layerGroup().addTo(map);
         let heatLayer = null;
         let showHeat = false;
 
-        // --- GPS CONFIGURACIÓN REFORZADA ---
+        // --- GPS CONFIGURACIÓN (Lado Izquierdo) ---
         let userMarker = null;
-        const locateControl = L.control({ position: 'bottomright' });
+        const locateControl = L.control({ position: 'bottomleft' }); // 👈 Cambiado a bottomleft
+        
         locateControl.onAdd = function() {
-            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            const container = L.DomUtil.create('div', 'leaflet-control');
             const div = L.DomUtil.create('div', 'locate-btn', container);
             div.innerHTML = '📍'; 
-            
             div.onclick = function(e) {
-                e.preventDefault();
                 e.stopPropagation();
-                map.locate({ 
-                    setView: true, 
-                    maxZoom: 16, 
-                    enableHighAccuracy: true,
-                    timeout: 10000 
-                });
+                map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
             };
             return container;
         };
@@ -119,9 +112,10 @@
         });
 
         map.on('locationerror', (e) => {
-            alert("Error de GPS: " + e.message + ". Verifica los permisos en el candado de la URL.");
+            alert("Error GPS: " + e.message + ". Revisá permisos en la barra de direcciones.");
         });
 
+        // --- FUNCIONES DE APOYO ---
         function getWaLink(phone) {
             if (!phone || phone === "N/A") return null;
             let clean = phone.replace(/\D/g, '');
@@ -134,7 +128,6 @@
             const rating = parseFloat(shop.RATING || 0);
             let lat = parseFloat(shop.LAT || shop.lat || 0);
             let lng = parseFloat(shop.LNG || shop.lng || 0);
-
             if (isNaN(lat) || lat === 0) return null;
 
             const fillCol = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
@@ -149,41 +142,23 @@
                 radius: 8, fillColor: fillCol, color: strokeCol, weight: weight, fillOpacity: 0.9
             });
 
-            const popupContent = `
-                <div class="popup-card">
-                    <div class="popup-header">
-                        <span class="popup-title">${shop.NAME}</span>
-                        <span class="popup-badge" style="background:${strokeCol}; color:white;">${platformName}</span>
-                    </div>
-                    <p class="popup-text">📍 ${shop.ADDRESS || 'Sin dirección'}</p>
-                    <p class="popup-text">⭐ <b>${rating}</b></p>
-                    ${getWaLink(shop.PHONE) ? `<a href="${getWaLink(shop.PHONE)}" target="_blank" class="btn-wa">📱 WhatsApp</a>` : ''}
-                </div>
-            `;
-            return { marker: marker.bindPopup(popupContent), lat, lng };
+            return { marker: marker.bindPopup(`<b>${shop.NAME}</b><br>${platformName}<br>⭐ ${rating}`), lat, lng };
         }
 
         function render(catFilter = 'all', platFilter = 'all') {
             markers.clearLayers();
             if (heatLayer) map.removeLayer(heatLayer);
-            
-            let bounds = [];
-            let heatData = [];
-            let counts = { peya: 0, uber: 0, didi: 0, total: 0 };
+            let bounds = [], heatData = [], counts = { peya: 0, uber: 0, didi: 0, total: 0 };
 
             if (typeof window.SCRAPED_LEADS === 'undefined') return;
 
             window.SCRAPED_LEADS.forEach(shop => {
                 const url = (shop.URL || "").toLowerCase();
-                let lat = parseFloat(shop.LAT || shop.lat || 0);
-                let lng = parseFloat(shop.LNG || shop.lng || 0);
+                let lat = parseFloat(shop.LAT || shop.lat || 0), lng = parseFloat(shop.LNG || shop.lng || 0);
                 if (isNaN(lat) || lat === 0) return;
 
                 let matchCat = catFilter === 'all' || (shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase());
-                let isU = url.includes('ubereats');
-                let isD = url.includes('didiglobal');
-                let isP = !isU && !isD;
-
+                let isU = url.includes('ubereats'), isD = url.includes('didiglobal'), isP = !isU && !isD;
                 let matchPlat = platFilter === 'all' || (platFilter === 'uber' && isU) || (platFilter === 'didi' && isD) || (platFilter === 'peya' && isP);
 
                 if (matchCat && matchPlat) {
@@ -212,18 +187,9 @@
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
-            let cats = new Set();
-            if (window.SCRAPED_LEADS) {
-                window.SCRAPED_LEADS.forEach(s => {
-                    if (s.CATEGORIES) {
-                        const cList = Array.isArray(s.CATEGORIES) ? s.CATEGORIES : s.CATEGORIES.split(',');
-                        cList.forEach(c => cats.add(c.trim()));
-                    }
-                });
-            }
             div.innerHTML = `
                 <b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select>
-                <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option></select>
                 <br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>
             `;
             div.querySelector('#heatToggle').onclick = function() {
@@ -244,9 +210,6 @@
                 <span class="platform-ring" style="border: 2px solid #000"></span> Uber <span class="count-badge" id="count-uber">0</span><br>
                 <span class="platform-ring" style="border: 2px solid #ff8c00"></span> DiDi <span class="count-badge" id="count-didi">0</span><br>
                 <span class="platform-ring" style="border: 2px solid #888"></span> PeYa <span class="count-badge" id="count-peya">0</span>
-                <hr style="margin:8px 0; border:0; border-top:1px solid #eee;">
-                <b>⭐ Calidad (Rating)</b>
-                <span class="dot" style="background:#22c55e"></span> 4.5+ | <span class="dot" style="background:#eab308"></span> 4.0+ | <span class="dot" style="background:#ef4444"></span> < 4.0
             `;
             return div;
         };
