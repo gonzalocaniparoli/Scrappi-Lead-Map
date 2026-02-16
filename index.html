@@ -24,12 +24,13 @@
             font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px;
         }
         
+        /* Botón GPS optimizado para móviles */
         .locate-btn {
-            background: #fff; width: 38px; height: 38px; line-height: 38px;
+            background: #fff; width: 44px; height: 44px; line-height: 44px;
             text-align: center; border-radius: 50%; cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 18px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 22px;
             display: flex; align-items: center; justify-content: center;
-            border: 2px solid #ff4d4d; color: #ff4d4d; margin-bottom: 10px;
+            border: 2px solid #ff4d4d; color: #ff4d4d; margin-bottom: 15px;
         }
 
         .legend b { display: block; margin-bottom: 5px; color: #000; font-size: 12px; }
@@ -54,9 +55,13 @@
             text-decoration: none; font-weight: 600; font-size: 12px;
         }
 
-        select, button.map-toggle { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
-        button.map-toggle { background: #f8fafc; font-weight: 600; }
-        button.map-toggle.active { background: #ff4d4d; color: white; border-color: #ff4d4d; }
+        select, button.map-toggle { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
+        button.map-toggle { background: #f8fafc; font-weight: 600; border: 1px solid #ff4d4d; color: #ff4d4d; }
+        button.map-toggle.active { background: #ff4d4d; color: white; }
+
+        @media (max-width: 600px) {
+            .legend { min-width: 140px; padding: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -69,6 +74,7 @@
     <script src="mapa_leads.js"></script>
 
     <script>
+        // Inicialización del mapa
         const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
@@ -78,39 +84,29 @@
         let heatLayer = null;
         let showHeat = false;
 
-// --- GPS (Optimizado para Celular) ---
+        // --- GPS CONFIGURACIÓN ---
         let userMarker = null;
         const locateControl = L.control({ position: 'bottomright' });
-        
         locateControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'locate-btn');
             div.innerHTML = '📍'; 
-            div.title = "Mi ubicación";
-            div.style.fontSize = '24px'; // Más grande para el dedo
-            
             div.onclick = function(e) {
                 e.stopPropagation();
-                // Forzamos la petición de permiso
-                map.locate({ 
-                    setView: true, 
-                    maxZoom: 16,
-                    enableHighAccuracy: true // Usa GPS real, no solo WiFi
-                });
+                map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
             };
             return div;
         };
         locateControl.addTo(map);
-
-        // Si el usuario rechaza o hay error (ej: no hay HTTPS)
-        map.on('locationerror', (e) => {
-            alert("Error de GPS: Asegúrate de estar usando HTTPS o dar permisos de ubicación al navegador.");
-        });
 
         map.on('locationfound', (e) => {
             if (userMarker) map.removeLayer(userMarker);
             userMarker = L.circleMarker(e.latlng, {
                 radius: 12, fillColor: '#3b82f6', color: '#fff', weight: 4, fillOpacity: 0.9
             }).addTo(map).bindPopup("Estás aquí").openPopup();
+        });
+
+        map.on('locationerror', () => {
+            alert("No se pudo obtener tu ubicación. Verifica los permisos de HTTPS y GPS en tu celular.");
         });
 
         function getWaLink(phone) {
@@ -171,7 +167,6 @@
                 if (isNaN(lat) || lat === 0) return;
 
                 let matchCat = catFilter === 'all' || (shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase());
-                
                 let isU = url.includes('ubereats');
                 let isD = url.includes('didiglobal');
                 let isP = !isU && !isD;
@@ -186,29 +181,22 @@
                     if (result) {
                         result.marker.addTo(markers);
                         bounds.push([result.lat, result.lng]);
-                        
-                        // Intensidad del calor basada en Rating
-                        let intensity = parseFloat(shop.RATING) / 5;
-                        heatData.push([result.lat, result.lng, intensity || 0.5]);
-
-                        if (isU) counts.uber++;
-                        else if (isD) counts.didi++;
-                        else counts.peya++;
+                        let intensity = (parseFloat(shop.RATING) || 3) / 5;
+                        heatData.push([result.lat, result.lng, intensity]);
+                        if (isU) counts.uber++; else if (isD) counts.didi++; else counts.peya++;
                         counts.total++;
                     }
                 }
             });
 
-            // Crear capa de calor
             heatLayer = L.heatLayer(heatData, {
-                radius: 25,
-                blur: 15,
-                maxZoom: 17,
+                radius: 25, blur: 15, maxZoom: 17,
                 gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red'}
             });
 
             if (showHeat) heatLayer.addTo(map);
 
+            // Actualizar contadores
             document.getElementById('count-total').innerText = counts.total;
             document.getElementById('count-uber').innerText = counts.uber;
             document.getElementById('count-didi').innerText = counts.didi;
@@ -234,13 +222,12 @@
             div.innerHTML = `
                 <b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select>
                 <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select>
-                <br><br><button id="heatToggle" class="map-toggle">🔥 Mapa de Calor: OFF</button>
+                <br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>
             `;
             
-            // Lógica del botón de calor
             div.querySelector('#heatToggle').onclick = function() {
                 showHeat = !showHeat;
-                this.innerText = `🔥 Mapa de Calor: ${showHeat ? 'ON' : 'OFF'}`;
+                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
                 this.classList.toggle('active');
                 if (showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
             };
@@ -254,14 +241,12 @@
             const div = L.DomUtil.create('div', 'legend');
             div.innerHTML = `
                 <b>📊 Market Share (<span id="count-total">0</span>)</b>
-                <span class="platform-ring" style="border: 2px solid #000"></span> Uber Eats <span class="count-badge" id="count-uber">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #ff8c00"></span> DiDi Food <span class="count-badge" id="count-didi">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #888"></span> PedidosYa <span class="count-badge" id="count-peya">0</span>
+                <span class="platform-ring" style="border: 2px solid #000"></span> Uber <span class="count-badge" id="count-uber">0</span><br>
+                <span class="platform-ring" style="border: 2px solid #ff8c00"></span> DiDi <span class="count-badge" id="count-didi">0</span><br>
+                <span class="platform-ring" style="border: 2px solid #888"></span> PeYa <span class="count-badge" id="count-peya">0</span>
                 <hr style="margin:8px 0; border:0; border-top:1px solid #eee;">
                 <b>⭐ Calidad (Rating)</b>
-                <span class="dot" style="background:#22c55e"></span> 4.5+ (Top)<br>
-                <span class="dot" style="background:#eab308"></span> 4.0+ (Bueno)<br>
-                <span class="dot" style="background:#ef4444"></span> < 4.0 (Bajo)
+                <span class="dot" style="background:#22c55e"></span> 4.5+ | <span class="dot" style="background:#eab308"></span> 4.0+ | <span class="dot" style="background:#ef4444"></span> < 4.0
             `;
             return div;
         };
