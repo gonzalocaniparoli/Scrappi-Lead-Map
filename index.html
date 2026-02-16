@@ -74,10 +74,8 @@
     <script src="mapa_leads.js"></script>
 
     <script>
-        // Inicialización del mapa
         const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
         
         const markers = L.layerGroup().addTo(map);
@@ -92,6 +90,7 @@
             div.innerHTML = '📍'; 
             div.onclick = function(e) {
                 e.stopPropagation();
+                // Intentamos localizar con alta precisión
                 map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
             };
             return div;
@@ -105,8 +104,8 @@
             }).addTo(map).bindPopup("Estás aquí").openPopup();
         });
 
-        map.on('locationerror', () => {
-            alert("No se pudo obtener tu ubicación. Verifica los permisos de HTTPS y GPS en tu celular.");
+        map.on('locationerror', (e) => {
+            alert("No se pudo obtener tu ubicación: " + e.message + ". Revisá los permisos de tu navegador.");
         });
 
         function getWaLink(phone) {
@@ -121,7 +120,6 @@
             const rating = parseFloat(shop.RATING || 0);
             let lat = parseFloat(shop.LAT || shop.lat || 0);
             let lng = parseFloat(shop.LNG || shop.lng || 0);
-
             if (isNaN(lat) || lat === 0) return null;
 
             const fillCol = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
@@ -136,102 +134,62 @@
                 radius: 8, fillColor: fillCol, color: strokeCol, weight: weight, fillOpacity: 0.9
             });
 
-            const popupContent = `
-                <div class="popup-card">
-                    <div class="popup-header">
-                        <span class="popup-title">${shop.NAME}</span>
-                        <span class="popup-badge" style="background:${strokeCol}; color:white;">${platformName}</span>
-                    </div>
-                    <p class="popup-text">📍 ${shop.ADDRESS || 'Sin dirección'}</p>
-                    <p class="popup-text">⭐ <b>${rating}</b></p>
-                    ${getWaLink(shop.PHONE) ? `<a href="${getWaLink(shop.PHONE)}" target="_blank" class="btn-wa">📱 WhatsApp</a>` : ''}
-                </div>
-            `;
-            return { marker: marker.bindPopup(popupContent), lat, lng };
+            return { marker: marker.bindPopup(`<b>${shop.NAME}</b><br>${platformName}<br>⭐ ${rating}`), lat, lng };
         }
 
         function render(catFilter = 'all', platFilter = 'all') {
             markers.clearLayers();
             if (heatLayer) map.removeLayer(heatLayer);
-            
-            let bounds = [];
-            let heatData = [];
-            let counts = { peya: 0, uber: 0, didi: 0, total: 0 };
+            let bounds = [], heatData = [], counts = { peya: 0, uber: 0, didi: 0, total: 0 };
 
             if (typeof window.SCRAPED_LEADS === 'undefined') return;
 
             window.SCRAPED_LEADS.forEach(shop => {
                 const url = (shop.URL || "").toLowerCase();
-                let lat = parseFloat(shop.LAT || shop.lat || 0);
-                let lng = parseFloat(shop.LNG || shop.lng || 0);
+                let lat = parseFloat(shop.LAT || shop.lat || 0), lng = parseFloat(shop.LNG || shop.lng || 0);
                 if (isNaN(lat) || lat === 0) return;
 
                 let matchCat = catFilter === 'all' || (shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase());
-                let isU = url.includes('ubereats');
-                let isD = url.includes('didiglobal');
-                let isP = !isU && !isD;
-
-                let matchPlat = platFilter === 'all' || 
-                    (platFilter === 'uber' && isU) ||
-                    (platFilter === 'didi' && isD) ||
-                    (platFilter === 'peya' && isP);
+                let isU = url.includes('ubereats'), isD = url.includes('didiglobal'), isP = !isU && !isD;
+                let matchPlat = platFilter === 'all' || (platFilter === 'uber' && isU) || (platFilter === 'didi' && isD) || (platFilter === 'peya' && isP);
 
                 if (matchCat && matchPlat) {
                     const result = createMarker(shop);
                     if (result) {
                         result.marker.addTo(markers);
                         bounds.push([result.lat, result.lng]);
-                        let intensity = (parseFloat(shop.RATING) || 3) / 5;
-                        heatData.push([result.lat, result.lng, intensity]);
+                        heatData.push([result.lat, result.lng, (parseFloat(shop.RATING) || 3) / 5]);
                         if (isU) counts.uber++; else if (isD) counts.didi++; else counts.peya++;
                         counts.total++;
                     }
                 }
             });
 
-            heatLayer = L.heatLayer(heatData, {
-                radius: 25, blur: 15, maxZoom: 17,
-                gradient: {0.4: 'blue', 0.6: 'cyan', 0.7: 'lime', 0.8: 'yellow', 1: 'red'}
-            });
-
+            heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15, maxZoom: 17 });
             if (showHeat) heatLayer.addTo(map);
 
-            // Actualizar contadores
             document.getElementById('count-total').innerText = counts.total;
             document.getElementById('count-uber').innerText = counts.uber;
             document.getElementById('count-didi').innerText = counts.didi;
             document.getElementById('count-peya').innerText = counts.peya;
 
-            if (bounds.length > 0 && !userMarker) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
+            if (bounds.length > 0 && !userMarker) map.fitBounds(bounds, { padding: [50, 50] });
         }
 
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
-            let cats = new Set();
-            if (window.SCRAPED_LEADS) {
-                window.SCRAPED_LEADS.forEach(s => {
-                    if (s.CATEGORIES) {
-                        const cList = Array.isArray(s.CATEGORIES) ? s.CATEGORIES : s.CATEGORIES.split(',');
-                        cList.forEach(c => cats.add(c.trim()));
-                    }
-                });
-            }
             div.innerHTML = `
                 <b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select>
-                <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option></select>
                 <br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>
             `;
-            
             div.querySelector('#heatToggle').onclick = function() {
                 showHeat = !showHeat;
                 this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
                 this.classList.toggle('active');
                 if (showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
             };
-
             div.onchange = () => render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
             return div;
         };
@@ -244,9 +202,6 @@
                 <span class="platform-ring" style="border: 2px solid #000"></span> Uber <span class="count-badge" id="count-uber">0</span><br>
                 <span class="platform-ring" style="border: 2px solid #ff8c00"></span> DiDi <span class="count-badge" id="count-didi">0</span><br>
                 <span class="platform-ring" style="border: 2px solid #888"></span> PeYa <span class="count-badge" id="count-peya">0</span>
-                <hr style="margin:8px 0; border:0; border-top:1px solid #eee;">
-                <b>⭐ Calidad (Rating)</b>
-                <span class="dot" style="background:#22c55e"></span> 4.5+ | <span class="dot" style="background:#eab308"></span> 4.0+ | <span class="dot" style="background:#ef4444"></span> < 4.0
             `;
             return div;
         };
