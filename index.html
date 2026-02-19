@@ -9,65 +9,39 @@
     <style>
         #map { height: 100vh; width: 100%; background: #f0f2f5; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .brand-watermark { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 4px 12px; border-radius: 20px; border: 1px solid #ff4d4d; font-size: 9px; color: #ff4d4d; font-weight: bold; pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
+        .legend { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6; font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px; }
         
-        .brand-watermark {
-            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
-            z-index: 1000; background: rgba(255, 255, 255, 0.9);
-            padding: 4px 12px; border-radius: 20px; border: 1px solid #ff4d4d;
-            font-size: 9px; color: #ff4d4d; font-weight: bold; pointer-events: none;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
+        /* Botón de Ubicación */
+        .locate-btn { background: #fff; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.4); font-size: 16px; display: flex; align-items: center; justify-content: center; border: none; color: #ff4d4d; margin-bottom: 10px; }
+        .locate-btn:hover { background: #f4f4f4; }
 
-        .legend {
-            background: white; padding: 12px; border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6;
-            font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px;
-        }
-        
-        /* Botón GPS en el lado izquierdo */
-        .locate-btn {
-            background: #fff; width: 44px; height: 44px; line-height: 44px;
-            text-align: center; border-radius: 50%; cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 22px;
-            display: flex; align-items: center; justify-content: center;
-            border: 2px solid #ff4d4d; color: #ff4d4d;
-            margin-bottom: 10px; /* Espacio respecto al zoom */
-        }
+        /* Buscador de Direcciones */
+        .search-container { position: fixed; top: 10px; left: 50px; z-index: 1000; display: flex; gap: 5px; }
+        .search-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; width: 250px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; }
+        .search-btn { background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
         .legend b { display: block; margin-bottom: 5px; color: #000; font-size: 12px; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 1px solid #fff; }
         .platform-ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
-        
-        .count-badge {
-            float: right; background: #f1f5f9; color: #475569;
-            padding: 0px 6px; border-radius: 10px; font-weight: 700;
-            font-size: 10px; margin-left: 10px;
-        }
-
+        .count-badge { float: right; background: #f1f5f9; color: #475569; padding: 0px 6px; border-radius: 10px; font-weight: 700; font-size: 10px; margin-left: 10px; }
         .popup-card { min-width: 200px; padding: 5px; }
         .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
         .popup-title { font-weight: 700; font-size: 14px; color: #1a1a1a; line-height: 1.2; flex: 1; }
         .popup-badge { font-size: 9px; padding: 2px 6px; border-radius: 6px; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
         .popup-text { margin: 4px 0; font-size: 12px; color: #4b5563; }
-        
-        .btn-wa {
-            display: block; width: 100%; background: #25D366; color: white !important;
-            text-align: center; padding: 8px; border-radius: 8px; margin-top: 10px;
-            text-decoration: none; font-weight: 600; font-size: 12px;
-        }
-
-        select, button.map-toggle { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
+        select, button.map-toggle { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
         button.map-toggle { background: #f8fafc; font-weight: 600; border: 1px solid #ff4d4d; color: #ff4d4d; }
         button.map-toggle.active { background: #ff4d4d; color: white; }
-
-        @media (max-width: 600px) {
-            .legend { min-width: 140px; padding: 10px; }
-            /* Aseguramos que el zoom y gps a la izquierda no se tapen con la marca de agua */
-            .leaflet-bottom.leaflet-left { margin-bottom: 40px; }
-        }
+        
+        .btn-whatsapp { display: block; width: 100%; margin-top: 10px; padding: 8px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .btn-whatsapp:hover { background: #128C7E; }
     </style>
 </head>
 <body>
+    <div class="search-container">
+        <input type="text" id="addressInput" class="search-input" placeholder="Buscar dirección (ej: Av. 9 de Julio, BSAS)">
+        <button id="btnManualSearch" class="search-btn">🔍</button>
+    </div>
 
     <div id="map"></div>
     <div class="brand-watermark">HUNTING ARGENTINA - Intelligence Suite</div>
@@ -77,127 +51,131 @@
     <script src="mapa_leads.js"></script>
 
     <script>
-        // Inicialización
         const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
-        
-        // El Zoom ahora va a estar abajo a la izquierda
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-        const markers = L.layerGroup().addTo(map);
-        let heatLayer = null;
-        let showHeat = false;
-
-        // --- GPS CONFIGURACIÓN (Lado Izquierdo) ---
-        let userMarker = null;
-        const locateControl = L.control({ position: 'bottomleft' }); // 👈 Cambiado a bottomleft
         
-        locateControl.onAdd = function() {
-            const container = L.DomUtil.create('div', 'leaflet-control');
-            const div = L.DomUtil.create('div', 'locate-btn', container);
-            div.innerHTML = '📍'; 
-            div.onclick = function(e) {
-                e.stopPropagation();
-                map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true });
-            };
-            return container;
-        };
-        locateControl.addTo(map);
+        const markers = L.layerGroup().addTo(map);
+        let heatLayer = null, showHeat = false;
 
-        map.on('locationfound', (e) => {
-            if (userMarker) map.removeLayer(userMarker);
-            userMarker = L.circleMarker(e.latlng, {
-                radius: 12, fillColor: '#3b82f6', color: '#fff', weight: 4, fillOpacity: 0.9
-            }).addTo(map).bindPopup("Estás aquí").openPopup();
-        });
-
-        map.on('locationerror', (e) => {
-            alert("Error GPS: " + e.message + ". Revisá permisos en la barra de direcciones.");
-        });
-
-        // --- FUNCIONES DE APOYO ---
-        function getWaLink(phone) {
-            if (!phone || phone === "N/A") return null;
-            let clean = phone.replace(/\D/g, '');
-            if (clean.length === 10) clean = "549" + clean;
-            return `https://wa.me/${clean}`;
+        // Función de Geocodificación (Buscador y DiDi)
+        async function geocode(address, url = "") {
+            try {
+                let hint = url.includes("/pe/") ? ", Lima, Peru" : (url.includes("/ar/") ? ", Argentina" : "");
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + hint)}&limit=1`);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
+            } catch (e) { return null; }
         }
 
-        function createMarker(shop) {
-            const url = (shop.URL || "").toLowerCase();
-            const rating = parseFloat(shop.RATING || 0);
-            let lat = parseFloat(shop.LAT || shop.lat || 0);
-            let lng = parseFloat(shop.LNG || shop.lng || 0);
-            if (isNaN(lat) || lat === 0) return null;
-
-            const fillCol = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
-            let strokeCol = "#888"; 
-            let platformName = "PedidosYa";
-            let weight = 2;
-
-            if (url.includes("ubereats.com")) { strokeCol = "#000000"; platformName = "Uber Eats"; weight = 4; }
-            else if (url.includes("didiglobal.com")) { strokeCol = "#ff8c00"; platformName = "DiDi Food"; weight = 4; }
-
-            const marker = L.circleMarker([lat, lng], {
-                radius: 8, fillColor: fillCol, color: strokeCol, weight: weight, fillOpacity: 0.9
-            });
-
-            return { marker: marker.bindPopup(`<b>${shop.NAME}</b><br>${platformName}<br>⭐ ${rating}`), lat, lng };
+        function getPlat(url) {
+            const u = (url || "").toLowerCase();
+            if (u.includes('pedidosya')) return { id: 'peya', name: 'PedidosYa', color: '#E0004D' };
+            if (u.includes('ubereats') || u.includes('uber')) return { id: 'uber', name: 'Uber Eats', color: '#000000' };
+            if (u.includes('didiglobal') || u.includes('didi')) return { id: 'didi', name: 'DiDi Food', color: '#FF8D00' };
+            return { id: 'other', name: 'Otros', color: '#757575' };
         }
 
-        function render(catFilter = 'all', platFilter = 'all') {
+        async function render(catFilter = 'all', platFilter = 'all') {
             markers.clearLayers();
             if (heatLayer) map.removeLayer(heatLayer);
+            
             let bounds = [], heatData = [], counts = { peya: 0, uber: 0, didi: 0, total: 0 };
+            let didiQueue = []; 
 
-            if (typeof window.SCRAPED_LEADS === 'undefined') return;
+            for (const shop of window.SCRAPED_LEADS) {
+                const plat = getPlat(shop.URL);
+                if (platFilter !== 'all' && platFilter !== plat.id) continue;
+                if (catFilter !== 'all' && !(shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase())) continue;
 
-            window.SCRAPED_LEADS.forEach(shop => {
-                const url = (shop.URL || "").toLowerCase();
-                let lat = parseFloat(shop.LAT || shop.lat || 0), lng = parseFloat(shop.LNG || shop.lng || 0);
-                if (isNaN(lat) || lat === 0) return;
+                let lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
+                const rating = parseFloat(shop.RATING || 0);
+                const fillCol = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
 
-                let matchCat = catFilter === 'all' || (shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase());
-                let isU = url.includes('ubereats'), isD = url.includes('didiglobal'), isP = !isU && !isD;
-                let matchPlat = platFilter === 'all' || (platFilter === 'uber' && isU) || (platFilter === 'didi' && isD) || (platFilter === 'peya' && isP);
+                const phoneClean = (shop.PHONE || "").replace(/\D/g, '');
+                const waLink = (phoneClean && phoneClean.length > 5) ? `<a href="https://wa.me/${phoneClean}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : '';
 
-                if (matchCat && matchPlat) {
-                    const result = createMarker(shop);
-                    if (result) {
-                        result.marker.addTo(markers);
-                        bounds.push([result.lat, result.lng]);
-                        heatData.push([result.lat, result.lng, (parseFloat(shop.RATING) || 3) / 5]);
-                        if (isU) counts.uber++; else if (isD) counts.didi++; else counts.peya++;
-                        counts.total++;
-                    }
+                const popupHtml = `<div class="popup-card">
+                    <div class="popup-header">
+                        <span class="popup-title">${shop.NAME}</span>
+                        <span class="popup-badge" style="background:${plat.color}; color:white;">${plat.name}</span>
+                    </div>
+                    <p class="popup-text">📍 ${shop.ADDRESS}</p>
+                    <p class="popup-text">⭐ <b>${rating}</b></p>
+                    ${waLink}
+                </div>`;
+
+                if (lat === 0.000001) {
+                    didiQueue.push({ shop, plat, rating, fillCol, popupHtml });
+                    counts.didi++;
+                    counts.total++;
+                } else if (lat !== 0) {
+                    const m = L.circleMarker([lat, lng], { radius: 8, fillColor: fillCol, color: plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
+                    m.bindPopup(popupHtml);
+                    bounds.push([lat, lng]);
+                    heatData.push([lat, lng, rating / 5]);
+                    if (counts[plat.id] !== undefined) counts[plat.id]++;
+                    counts.total++;
                 }
-            });
-
-            heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15, maxZoom: 17 });
-            if (showHeat) heatLayer.addTo(map);
+            }
 
             document.getElementById('count-total').innerText = counts.total;
             document.getElementById('count-uber').innerText = counts.uber;
             document.getElementById('count-didi').innerText = counts.didi;
             document.getElementById('count-peya').innerText = counts.peya;
 
-            if (bounds.length > 0 && !userMarker) map.fitBounds(bounds, { padding: [50, 50] });
+            let delay = 0;
+            didiQueue.forEach((item) => {
+                setTimeout(async () => {
+                    const coords = await geocode(item.shop.ADDRESS, item.shop.URL);
+                    if (coords) {
+                        const mDidi = L.circleMarker(coords, { radius: 8, fillColor: item.fillCol, color: item.plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
+                        mDidi.bindPopup(item.popupHtml);
+                        bounds.push(coords);
+                    }
+                }, delay);
+                delay += 1500; 
+            });
+
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
         }
 
+        // Lógica Buscador Manual
+        document.getElementById('btnManualSearch').onclick = async () => {
+            const query = document.getElementById('addressInput').value;
+            if (!query) return;
+            const coords = await geocode(query);
+            if (coords) {
+                map.setView(coords, 15);
+                L.marker(coords).addTo(markers).bindPopup(`<b>Búsqueda:</b><br>${query}`).openPopup();
+            } else {
+                alert("No se encontró la dirección.");
+            }
+        };
+
+        // Lógica Botón Ubicación GPS
+        const locateControl = L.control({ position: 'bottomleft' });
+        locateControl.onAdd = function() {
+            const div = L.DomUtil.create('div', 'locate-btn');
+            div.innerHTML = '📍';
+            div.title = "Mi ubicación";
+            div.onclick = function() { map.locate({ setView: true, maxZoom: 15 }); };
+            return div;
+        };
+
+        map.on('locationfound', (e) => {
+            L.circle(e.latlng, { radius: e.accuracy, color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.15 }).addTo(markers);
+        });
+
+        // Controles de Filtros
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select>
-                <br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option></select>
-                <br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>
-            `;
-            div.querySelector('#heatToggle').onclick = function() {
-                showHeat = !showHeat;
-                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
-                this.classList.toggle('active');
-                if (showHeat) heatLayer.addTo(map); else map.removeLayer(heatLayer);
-            };
+            let cats = new Set();
+            (window.SCRAPED_LEADS || []).forEach(s => { if (s.CATEGORIES) (Array.isArray(s.CATEGORIES)?s.CATEGORIES:s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim())); });
+            div.innerHTML = `<b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select><br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select><br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>`;
+            div.querySelector('#heatToggle').onclick = function() { showHeat = !showHeat; this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`; this.classList.toggle('active'); };
             div.onchange = () => render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
             return div;
         };
@@ -205,19 +183,15 @@
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
             const div = L.DomUtil.create('div', 'legend');
-            div.innerHTML = `
-                <b>📊 Market Share (<span id="count-total">0</span>)</b>
-                <span class="platform-ring" style="border: 2px solid #000"></span> Uber <span class="count-badge" id="count-uber">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #ff8c00"></span> DiDi <span class="count-badge" id="count-didi">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #888"></span> PeYa <span class="count-badge" id="count-peya">0</span>
-            `;
+            div.innerHTML = `<b>📊 Market Share (<span id="count-total">0</span>)</b><span class="platform-ring" style="border: 2px solid #000000"></span> Uber Eats <span class="count-badge" id="count-uber">0</span><br><span class="platform-ring" style="border: 2px solid #FF8D00"></span> DiDi Food <span class="count-badge" id="count-didi">0</span><br><span class="platform-ring" style="border: 2px solid #E0004D"></span> PedidosYa <span class="count-badge" id="count-peya">0</span>`;
             return div;
         };
 
-        if (window.SCRAPED_LEADS) {
-            legend.addTo(map);
-            filterControl.addTo(map);
-            render();
+        if (window.SCRAPED_LEADS) { 
+            legend.addTo(map); 
+            filterControl.addTo(map); 
+            locateControl.addTo(map);
+            render(); 
         }
     </script>
 </body>
