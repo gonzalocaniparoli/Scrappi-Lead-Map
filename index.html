@@ -58,7 +58,6 @@
         const markers = L.layerGroup().addTo(map);
         let heatLayer = null, showHeat = false;
 
-        // Función de Geocodificación (Buscador y DiDi)
         async function geocode(address, url = "") {
             try {
                 let hint = url.includes("/pe/") ? ", Lima, Peru" : (url.includes("/ar/") ? ", Argentina" : "");
@@ -79,7 +78,10 @@
 
         async function render(catFilter = 'all', platFilter = 'all') {
             markers.clearLayers();
-            if (heatLayer) map.removeLayer(heatLayer);
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+                heatLayer = null;
+            }
             
             let bounds = [], heatData = [], counts = { peya: 0, uber: 0, didi: 0, total: 0 };
             let didiQueue = []; 
@@ -110,7 +112,7 @@
                     didiQueue.push({ shop, plat, rating, fillCol, popupHtml });
                     counts.didi++;
                     counts.total++;
-                } else if (lat !== 0) {
+                } else if (lat !== 0 && !isNaN(lat)) {
                     const m = L.circleMarker([lat, lng], { radius: 8, fillColor: fillCol, color: plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
                     m.bindPopup(popupHtml);
                     bounds.push([lat, lng]);
@@ -120,19 +122,35 @@
                 }
             }
 
-            document.getElementById('count-total').innerText = counts.total;
-            document.getElementById('count-uber').innerText = counts.uber;
-            document.getElementById('count-didi').innerText = counts.didi;
-            document.getElementById('count-peya').innerText = counts.peya;
+            const totalEl = document.getElementById('count-total');
+            if (totalEl) {
+                totalEl.innerText = counts.total;
+                document.getElementById('count-uber').innerText = counts.uber;
+                document.getElementById('count-didi').innerText = counts.didi;
+                document.getElementById('count-peya').innerText = counts.peya;
+            }
+
+            if (showHeat && heatData.length > 0) {
+                heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15, max: 1.0 }).addTo(map);
+            }
 
             let delay = 0;
-            didiQueue.forEach((item) => {
+            let firstDidiFound = false;
+
+            didiQueue.forEach((item, index) => {
                 setTimeout(async () => {
                     const coords = await geocode(item.shop.ADDRESS, item.shop.URL);
                     if (coords) {
                         const mDidi = L.circleMarker(coords, { radius: 8, fillColor: item.fillCol, color: item.plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
                         mDidi.bindPopup(item.popupHtml);
-                        bounds.push(coords);
+                        
+                        if (showHeat && heatLayer) heatLayer.addLatLng([...coords, item.rating / 5]);
+
+                        // SOLUCIÓN DIDI: Si es el primer punto de DiDi que encontramos y el mapa está vacío, nos movemos ahí
+                        if (!firstDidiFound && bounds.length === 0) {
+                            firstDidiFound = true;
+                            map.setView(coords, 13);
+                        }
                     }
                 }, delay);
                 delay += 1500; 
@@ -141,7 +159,6 @@
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
         }
 
-        // Lógica Buscador Manual
         document.getElementById('btnManualSearch').onclick = async () => {
             const query = document.getElementById('addressInput').value;
             if (!query) return;
@@ -154,12 +171,10 @@
             }
         };
 
-        // Lógica Botón Ubicación GPS
         const locateControl = L.control({ position: 'bottomleft' });
         locateControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'locate-btn');
             div.innerHTML = '📍';
-            div.title = "Mi ubicación";
             div.onclick = function() { map.locate({ setView: true, maxZoom: 15 }); };
             return div;
         };
@@ -168,14 +183,23 @@
             L.circle(e.latlng, { radius: e.accuracy, color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.15 }).addTo(markers);
         });
 
-        // Controles de Filtros
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'legend');
             let cats = new Set();
-            (window.SCRAPED_LEADS || []).forEach(s => { if (s.CATEGORIES) (Array.isArray(s.CATEGORIES)?s.CATEGORIES:s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim())); });
+            (window.SCRAPED_LEADS || []).forEach(s => { 
+                if (s.CATEGORIES) (Array.isArray(s.CATEGORIES)?s.CATEGORIES:s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim())); 
+            });
             div.innerHTML = `<b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option></select><br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select><br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>`;
-            div.querySelector('#heatToggle').onclick = function() { showHeat = !showHeat; this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`; this.classList.toggle('active'); };
+            
+            div.querySelector('#heatToggle').onclick = function(e) { 
+                L.DomEvent.stopPropagation(e);
+                showHeat = !showHeat; 
+                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`; 
+                this.classList.toggle('active');
+                render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
+            };
+            
             div.onchange = () => render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
             return div;
         };
