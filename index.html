@@ -9,36 +9,71 @@
     <style>
         #map { height: 100vh; width: 100%; background: #f0f2f5; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .brand-watermark { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255, 255, 255, 0.9); padding: 4px 12px; border-radius: 20px; border: 1px solid #ff4d4d; font-size: 9px; color: #ff4d4d; font-weight: bold; pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
-        .legend { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6; font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px; }
-        
-        /* Botón de Ubicación */
-        .locate-btn { background: #fff; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.4); font-size: 16px; display: flex; align-items: center; justify-content: center; border: none; color: #ff4d4d; margin-bottom: 10px; }
-        .locate-btn:hover { background: #f4f4f4; }
 
-        /* Buscador de Direcciones */
+        .brand-watermark { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.9); padding: 4px 12px; border-radius: 20px; border: 1px solid #ff4d4d; font-size: 9px; color: #ff4d4d; font-weight: bold; pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ── Buscador ── */
         .search-container { position: fixed; top: 10px; left: 50px; z-index: 1000; display: flex; gap: 5px; }
-        .search-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; width: 250px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; }
-        .search-btn { background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .search-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; width: 200px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; font-size: 13px; }
+        .search-btn { background: #ff4d4d; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
+        /* ── Botón ubicación ── */
+        .locate-btn { background: #fff; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.4); font-size: 16px; display: flex; align-items: center; justify-content: center; border: none; color: #ff4d4d; margin-bottom: 10px; }
+
+        /* ── Panel de filtros — desktop ── */
+        .legend { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6; font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px; }
         .legend b { display: block; margin-bottom: 5px; color: #000; font-size: 12px; }
         .platform-ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
         .count-badge { float: right; background: #f1f5f9; color: #475569; padding: 0px 6px; border-radius: 10px; font-weight: 700; font-size: 10px; margin-left: 10px; }
-        .popup-card { min-width: 200px; padding: 5px; }
-        .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
-        .popup-title { font-weight: 700; font-size: 14px; color: #1a1a1a; line-height: 1.2; flex: 1; }
-        .popup-badge { font-size: 9px; padding: 2px 6px; border-radius: 6px; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
-        .popup-text { margin: 4px 0; font-size: 12px; color: #4b5563; }
         select, button.map-toggle { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
         button.map-toggle { background: #f8fafc; font-weight: 600; border: 1px solid #ff4d4d; color: #ff4d4d; }
         button.map-toggle.active { background: #ff4d4d; color: white; }
-        
-        .btn-whatsapp { display: block; width: 100%; margin-top: 10px; padding: 8px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
-        .btn-whatsapp:hover { background: #128C7E; }
-        .btn-maps { display: block; width: 100%; margin-top: 6px; padding: 8px; background: #4285F4; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
-        .btn-maps:hover { background: #2b6fd6; }
         .semaforo-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 11px; }
         .semaforo-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ── Popup ── */
+        .popup-card { min-width: 180px; padding: 4px; }
+        .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px; }
+        .popup-title { font-weight: 700; font-size: 13px; color: #1a1a1a; line-height: 1.2; flex: 1; }
+        .popup-badge { font-size: 9px; padding: 2px 6px; border-radius: 6px; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
+        .popup-text { margin: 3px 0; font-size: 11px; color: #4b5563; }
+        .btn-whatsapp { display: block; width: 100%; margin-top: 8px; padding: 7px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .btn-whatsapp:hover { background: #128C7E; }
+        .btn-maps { display: block; width: 100%; margin-top: 5px; padding: 7px; background: #4285F4; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .btn-maps:hover { background: #2b6fd6; }
+
+        /* ══════════════════════════════════
+           MOBILE — pantallas ≤ 600px
+        ══════════════════════════════════ */
+        @media (max-width: 600px) {
+
+            /* Buscador compacto */
+            .search-container { left: 10px; right: 10px; top: 8px; }
+            .search-input { width: 100%; flex: 1; font-size: 12px; }
+
+            /* ── Panel de filtros mobile: colapsable desde arriba ── */
+            .leaflet-top.leaflet-right { top: auto !important; bottom: 60px !important; right: 8px !important; }
+
+            .legend.filter-panel { min-width: unset; width: 160px; font-size: 11px; padding: 10px; }
+            .legend.filter-panel .panel-toggle-btn {
+                display: flex; align-items: center; justify-content: space-between;
+                cursor: pointer; font-weight: 700; font-size: 12px; color: #ff4d4d;
+                margin: 0; padding: 0; background: none; border: none; width: 100%;
+            }
+            .legend.filter-panel .panel-body { margin-top: 8px; }
+            .legend.filter-panel.collapsed .panel-body { display: none; }
+
+            /* ── Leyenda mobile: compacta abajo a la derecha ── */
+            .leaflet-bottom.leaflet-right { bottom: 8px !important; right: 8px !important; }
+            .legend.stats-panel { min-width: unset; width: 150px; font-size: 10px; padding: 8px 10px; }
+            .legend.stats-panel b { font-size: 11px; }
+            .count-badge { font-size: 9px; padding: 0 4px; }
+
+            /* Popup más pequeño en mobile */
+            .popup-card { min-width: 160px; }
+            .popup-title { font-size: 12px; }
+            .leaflet-popup-content { margin: 10px 12px; }
+        }
     </style>
 </head>
 <body>
@@ -206,42 +241,66 @@
 
         const filterControl = L.control({ position: 'topright' });
         filterControl.onAdd = function() {
-            const div = L.DomUtil.create('div', 'legend');
+            const div = L.DomUtil.create('div', 'legend filter-panel');
             let cats = new Set();
-            (window.SCRAPED_LEADS || []).forEach(s => { 
-                if (s.CATEGORIES) (Array.isArray(s.CATEGORIES)?s.CATEGORIES:s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim())); 
+            (window.SCRAPED_LEADS || []).forEach(s => {
+                if (s.CATEGORIES) (Array.isArray(s.CATEGORIES) ? s.CATEGORIES : s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim()));
             });
-            div.innerHTML = `<b>🏢 Plataforma</b><select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option><option value="ifood">iFood</option></select><br><br><b>🍕 Rubro</b><select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select><br><br><button id="heatToggle" class="map-toggle">🔥 HEATMAP: OFF</button>`;
-            
-            div.querySelector('#heatToggle').onclick = function(e) { 
+
+            div.innerHTML = `
+                <button class="panel-toggle-btn" id="panelToggle">
+                    <span>🏢 Filtros</span><span id="panelArrow">▲</span>
+                </button>
+                <div class="panel-body" id="panelBody">
+                    <b style="margin-top:8px">Plataforma</b>
+                    <select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option><option value="ifood">iFood</option></select>
+                    <b style="margin-top:8px">🍕 Rubro</b>
+                    <select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+                    <button id="heatToggle" class="map-toggle" style="margin-top:8px">🔥 HEATMAP: OFF</button>
+                </div>
+            `;
+
+            // Collapsible toggle
+            div.querySelector('#panelToggle').onclick = function(e) {
                 L.DomEvent.stopPropagation(e);
-                showHeat = !showHeat; 
-                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`; 
+                div.classList.toggle('collapsed');
+                document.getElementById('panelArrow').innerText = div.classList.contains('collapsed') ? '▼' : '▲';
+            };
+
+            div.querySelector('#heatToggle').onclick = function(e) {
+                L.DomEvent.stopPropagation(e);
+                showHeat = !showHeat;
+                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
                 this.classList.toggle('active');
                 render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
             };
-            
+
             div.onchange = () => render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
+            L.DomEvent.disableScrollPropagation(div);
             return div;
         };
 
         const legend = L.control({ position: 'bottomright' });
         legend.onAdd = () => {
-            const div = L.DomUtil.create('div', 'legend');
+            const div = L.DomUtil.create('div', 'legend stats-panel');
             div.innerHTML = `
-                <b>📊 Market Share (<span id="count-total">0</span>)</b><br>
-                <span class="platform-ring" style="border: 2px solid #000000"></span> Uber Eats <span class="count-badge" id="count-uber">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #FF8D00"></span> DiDi Food <span class="count-badge" id="count-didi">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #E0004D"></span> PedidosYa <span class="count-badge" id="count-peya">0</span><br>
-                <span class="platform-ring" style="border: 2px solid #EA1D2C"></span> iFood <span class="count-badge" id="count-ifood">0</span>
+                <b>📊 Market Share (<span id="count-total">0</span>)</b>
+                <br><span class="platform-ring" style="border: 2px solid #000000"></span> Uber Eats <span class="count-badge" id="count-uber">0</span>
+                <br><span class="platform-ring" style="border: 2px solid #FF8D00"></span> DiDi Food <span class="count-badge" id="count-didi">0</span>
+                <br><span class="platform-ring" style="border: 2px solid #E0004D"></span> PedidosYa <span class="count-badge" id="count-peya">0</span>
+                <br><span class="platform-ring" style="border: 2px solid #EA1D2C"></span> iFood <span class="count-badge" id="count-ifood">0</span>
                 <hr style="border:none; border-top:1px solid #eee; margin: 8px 0;">
                 <b>🚦 Oportunidad</b><br>
                 <div class="semaforo-row"><div class="semaforo-dot" style="background:#22c55e"></div> +4.5 ⭐ — Alianza ideal</div>
-                <div class="semaforo-row"><div class="semaforo-dot" style="background:#eab308"></div> 4.0–4.5 ⭐ — Local promedio</div>
+                <div class="semaforo-row"><div class="semaforo-dot" style="background:#eab308"></div> 4.0–4.5 ⭐ — Promedio</div>
                 <div class="semaforo-row"><div class="semaforo-dot" style="background:#ef4444"></div> -4.0 ⭐ — <b>Tu objetivo</b></div>
             `;
             return div;
         };
+
+        document.getElementById('addressInput').addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') document.getElementById('btnManualSearch').click();
+        });
 
         if (window.SCRAPED_LEADS) { 
             legend.addTo(map); 
