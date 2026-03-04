@@ -346,6 +346,45 @@
             locateControl.addTo(map);
             render();
         }
+
+        // Posicionamiento mobile via JS (evita conflictos con CSS specificity)
+        function applyMobileLayout() {
+            const isMobile = window.innerWidth <= 600;
+            const filterPanel = document.getElementById('filterPanel');
+            const statsPanel  = document.getElementById('statsPanel');
+
+            if (isMobile) {
+                // Filtros: abajo izquierda
+                filterPanel.style.top    = 'auto';
+                filterPanel.style.bottom = '90px';
+                filterPanel.style.left   = '8px';
+                filterPanel.style.right  = 'auto';
+                filterPanel.style.width  = '150px';
+                // Leyenda: abajo derecha
+                statsPanel.style.bottom  = '26px';
+                statsPanel.style.right   = '8px';
+                statsPanel.style.left    = 'auto';
+                statsPanel.style.minWidth = '130px';
+                statsPanel.style.fontSize = '10px';
+                statsPanel.style.padding  = '8px 10px';
+            } else {
+                // Desktop: reset a valores originales
+                filterPanel.style.top    = '10px';
+                filterPanel.style.bottom = 'auto';
+                filterPanel.style.left   = 'auto';
+                filterPanel.style.right  = '10px';
+                filterPanel.style.width  = '175px';
+                statsPanel.style.bottom  = '30px';
+                statsPanel.style.right   = '10px';
+                statsPanel.style.left    = 'auto';
+                statsPanel.style.minWidth = '158px';
+                statsPanel.style.fontSize = '11px';
+                statsPanel.style.padding  = '10px 12px';
+            }
+        }
+
+        applyMobileLayout();
+        window.addEventListener('resize', applyMobileLayout);
     </script>
 </body>
 </html>
