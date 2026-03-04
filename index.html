@@ -7,79 +7,157 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        #map { height: 100vh; width: 100%; background: #f0f2f5; }
+        * { box-sizing: border-box; }
         body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; background: #f0f2f5; }
 
-        .brand-watermark { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.9); padding: 4px 12px; border-radius: 20px; border: 1px solid #ff4d4d; font-size: 9px; color: #ff4d4d; font-weight: bold; pointer-events: none; text-transform: uppercase; letter-spacing: 1px; }
+        .brand-watermark {
+            position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 1000; background: rgba(255,255,255,0.9); padding: 4px 12px;
+            border-radius: 20px; border: 1px solid #ff4d4d; font-size: 9px;
+            color: #ff4d4d; font-weight: bold; pointer-events: none;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
 
         /* ── Buscador ── */
-        .search-container { position: fixed; top: 10px; left: 50px; z-index: 1000; display: flex; gap: 5px; }
-        .search-input { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; width: 200px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; font-size: 13px; }
-        .search-btn { background: #ff4d4d; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .search-container {
+            position: fixed; top: 10px; left: 50px; z-index: 1000; display: flex; gap: 5px;
+        }
+        .search-input {
+            padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc;
+            width: 240px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            outline: none; font-size: 13px; font-family: 'Inter', sans-serif;
+        }
+        .search-btn {
+            background: #ff4d4d; color: white; border: none;
+            padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
 
         /* ── Botón ubicación ── */
-        .locate-btn { background: #fff; width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.4); font-size: 16px; display: flex; align-items: center; justify-content: center; border: none; color: #ff4d4d; margin-bottom: 10px; }
-
-        /* ── Panel de filtros — desktop ── */
-        .legend { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6; font-size: 11px; color: #333; border: 1px solid #eee; min-width: 160px; }
-        .legend b { display: block; margin-bottom: 5px; color: #000; font-size: 12px; }
-        .platform-ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
-        .count-badge { float: right; background: #f1f5f9; color: #475569; padding: 0px 6px; border-radius: 10px; font-weight: 700; font-size: 10px; margin-left: 10px; }
-        select, button.map-toggle { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #ddd; font-size: 11px; margin-top: 4px; outline: none; cursor: pointer; }
-        button.map-toggle { background: #f8fafc; font-weight: 600; border: 1px solid #ff4d4d; color: #ff4d4d; }
-        button.map-toggle.active { background: #ff4d4d; color: white; }
-        .semaforo-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 11px; }
-        .semaforo-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+        .locate-btn {
+            background: #fff; width: 34px; height: 34px; border-radius: 4px;
+            cursor: pointer; box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            font-size: 16px; display: flex; align-items: center; justify-content: center;
+            border: none; color: #ff4d4d; margin-bottom: 6px;
+        }
 
         /* ── Popup ── */
-        .popup-card { min-width: 180px; padding: 4px; }
+        .popup-card { min-width: 190px; padding: 4px; }
         .popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 8px; }
         .popup-title { font-weight: 700; font-size: 13px; color: #1a1a1a; line-height: 1.2; flex: 1; }
         .popup-badge { font-size: 9px; padding: 2px 6px; border-radius: 6px; text-transform: uppercase; font-weight: 800; white-space: nowrap; }
         .popup-text { margin: 3px 0; font-size: 11px; color: #4b5563; }
-        .btn-whatsapp { display: block; width: 100%; margin-top: 8px; padding: 7px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .btn-whatsapp { display: block; width: 100%; margin-top: 8px; padding: 8px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
         .btn-whatsapp:hover { background: #128C7E; }
-        .btn-maps { display: block; width: 100%; margin-top: 5px; padding: 7px; background: #4285F4; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
+        .btn-maps { display: block; width: 100%; margin-top: 5px; padding: 8px; background: #4285F4; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 12px; }
         .btn-maps:hover { background: #2b6fd6; }
 
-        /* ══════════════════════════════════
-           MOBILE — pantallas ≤ 600px
-        ══════════════════════════════════ */
-        @media (max-width: 600px) {
+        /* ── Panel Filtros (fixed HTML, no Leaflet) ── */
+        #filterPanel {
+            position: fixed; top: 10px; right: 10px; z-index: 1000;
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            border: 1px solid #eee; width: 175px;
+            font-family: 'Inter', sans-serif; font-size: 11px; color: #333;
+        }
+        #filterHeader {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 12px; cursor: pointer; background: none;
+            border: none; width: 100%; font-weight: 700; font-size: 12px; color: #ff4d4d;
+            font-family: 'Inter', sans-serif;
+        }
+        #filterHeader:hover { background: #fff5f5; border-radius: 12px; }
+        #filterArrow { font-size: 10px; }
+        #filterBody { padding: 0 12px 12px; }
+        #filterBody.hidden { display: none; }
+        #filterBody label { display: block; font-weight: 600; color: #333; margin: 8px 0 3px; font-size: 11px; }
+        #filterBody select {
+            width: 100%; padding: 5px 6px; border-radius: 6px;
+            border: 1px solid #ddd; font-size: 11px; outline: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        #heatToggle {
+            width: 100%; margin-top: 8px; padding: 6px; border-radius: 6px;
+            border: 1px solid #ff4d4d; background: #f8fafc; color: #ff4d4d;
+            font-weight: 600; font-size: 11px; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        #heatToggle.active { background: #ff4d4d; color: white; }
 
-            /* Buscador compacto */
+        /* ── Leyenda (fixed HTML, no Leaflet) ── */
+        #statsPanel {
+            position: fixed; bottom: 30px; right: 10px; z-index: 1000;
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            border: 1px solid #eee; padding: 10px 12px;
+            font-family: 'Inter', sans-serif; font-size: 11px; color: #333;
+            line-height: 1.8; min-width: 158px;
+        }
+        #statsPanel b { display: block; margin-bottom: 2px; color: #000; font-size: 12px; }
+        .platform-ring { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+        .count-badge { float: right; background: #f1f5f9; color: #475569; padding: 0 6px; border-radius: 10px; font-weight: 700; font-size: 10px; }
+        .semaforo-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 10px; line-height: 1.4; }
+        .semaforo-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .divider { border: none; border-top: 1px solid #eee; margin: 7px 0; }
+
+        /* ════════════ MOBILE ≤ 600px ════════════ */
+        @media (max-width: 600px) {
             .search-container { left: 10px; right: 10px; top: 8px; }
             .search-input { width: 100%; flex: 1; font-size: 12px; }
 
-            /* ── Panel de filtros mobile: colapsable desde arriba ── */
-            .leaflet-top.leaflet-right { top: auto !important; bottom: 60px !important; right: 8px !important; }
+            #filterPanel { top: 56px; right: 8px; width: 155px; }
 
-            .legend.filter-panel { min-width: unset; width: 160px; font-size: 11px; padding: 10px; }
-            .legend.filter-panel .panel-toggle-btn {
-                display: flex; align-items: center; justify-content: space-between;
-                cursor: pointer; font-weight: 700; font-size: 12px; color: #ff4d4d;
-                margin: 0; padding: 0; background: none; border: none; width: 100%;
+            #statsPanel {
+                bottom: 26px; right: 8px; min-width: 140px;
+                font-size: 10px; padding: 8px 10px;
             }
-            .legend.filter-panel .panel-body { margin-top: 8px; }
-            .legend.filter-panel.collapsed .panel-body { display: none; }
-
-            /* ── Leyenda mobile: compacta abajo a la derecha ── */
-            .leaflet-bottom.leaflet-right { bottom: 8px !important; right: 8px !important; }
-            .legend.stats-panel { min-width: unset; width: 150px; font-size: 10px; padding: 8px 10px; }
-            .legend.stats-panel b { font-size: 11px; }
-            .count-badge { font-size: 9px; padding: 0 4px; }
-
-            /* Popup más pequeño en mobile */
-            .popup-card { min-width: 160px; }
-            .popup-title { font-size: 12px; }
-            .leaflet-popup-content { margin: 10px 12px; }
+            #statsPanel b { font-size: 11px; }
         }
     </style>
 </head>
 <body>
+
+    <!-- Buscador -->
     <div class="search-container">
-        <input type="text" id="addressInput" class="search-input" placeholder="Buscar dirección (ej: Av. 9 de Julio, BSAS)">
+        <input type="text" id="addressInput" class="search-input" placeholder="Buscar dirección...">
         <button id="btnManualSearch" class="search-btn">🔍</button>
+    </div>
+
+    <!-- Panel Filtros -->
+    <div id="filterPanel">
+        <button id="filterHeader" onclick="toggleFilters()">
+            <span>🏢 Filtros</span>
+            <span id="filterArrow">▼</span>
+        </button>
+        <div id="filterBody" class="hidden">
+            <label>Plataforma</label>
+            <select id="platFilter">
+                <option value="all">Todas</option>
+                <option value="peya">PedidosYa</option>
+                <option value="uber">Uber Eats</option>
+                <option value="didi">DiDi Food</option>
+                <option value="ifood">iFood</option>
+            </select>
+            <label>🍕 Rubro</label>
+            <select id="catFilter">
+                <option value="all">Todos</option>
+            </select>
+            <button id="heatToggle" onclick="toggleHeat()">🔥 HEATMAP: OFF</button>
+        </div>
+    </div>
+
+    <!-- Leyenda -->
+    <div id="statsPanel">
+        <b>📊 Market Share (<span id="count-total">0</span>)</b>
+        <span class="platform-ring" style="border:2px solid #000"></span>Uber Eats<span class="count-badge" id="count-uber">0</span><br>
+        <span class="platform-ring" style="border:2px solid #FF8D00"></span>DiDi Food<span class="count-badge" id="count-didi">0</span><br>
+        <span class="platform-ring" style="border:2px solid #E0004D"></span>PedidosYa<span class="count-badge" id="count-peya">0</span><br>
+        <span class="platform-ring" style="border:2px solid #EA1D2C"></span>iFood<span class="count-badge" id="count-ifood">0</span>
+        <hr class="divider">
+        <b>🚦 Oportunidad</b>
+        <div class="semaforo-row"><div class="semaforo-dot" style="background:#22c55e"></div>+4.5 ⭐ Alianza ideal</div>
+        <div class="semaforo-row"><div class="semaforo-dot" style="background:#eab308"></div>4.0–4.5 ⭐ Promedio</div>
+        <div class="semaforo-row"><div class="semaforo-dot" style="background:#ef4444"></div>-4.0 ⭐ <b>Tu objetivo</b></div>
     </div>
 
     <div id="map"></div>
@@ -93,130 +171,126 @@
         const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-        
+
         const markers = L.layerGroup().addTo(map);
         let heatLayer = null, showHeat = false;
 
+        function toggleFilters() {
+            const body = document.getElementById('filterBody');
+            const arrow = document.getElementById('filterArrow');
+            body.classList.toggle('hidden');
+            arrow.textContent = body.classList.contains('hidden') ? '▼' : '▲';
+        }
+
+        function toggleHeat() {
+            showHeat = !showHeat;
+            const btn = document.getElementById('heatToggle');
+            btn.textContent = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
+            btn.classList.toggle('active', showHeat);
+            render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
+        }
+
+        document.getElementById('platFilter').onchange = () =>
+            render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
+        document.getElementById('catFilter').onchange = () =>
+            render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
+
         async function geocode(address, url = "") {
             try {
-                let hint = url.includes("/pe/") ? ", Lima, Peru" : (url.includes("/ar/") ? ", Argentina" : "");
+                const hint = url.includes("/pe/") ? ", Lima, Peru" : url.includes("/ar/") ? ", Argentina" : "";
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + hint)}&limit=1`);
                 if (!res.ok) return null;
                 const data = await res.json();
                 return data.length > 0 ? [parseFloat(data[0].lat), parseFloat(data[0].lon)] : null;
-            } catch (e) { return null; }
+            } catch { return null; }
         }
 
         function getPlat(url) {
             const u = (url || "").toLowerCase();
-            if (u.includes('pedidosya')) return { id: 'peya', name: 'PedidosYa', color: '#E0004D' };
+            if (u.includes('pedidosya')) return { id: 'peya',  name: 'PedidosYa', color: '#E0004D' };
             if (u.includes('ubereats') || u.includes('uber')) return { id: 'uber', name: 'Uber Eats', color: '#000000' };
             if (u.includes('didiglobal') || u.includes('didi')) return { id: 'didi', name: 'DiDi Food', color: '#FF8D00' };
             if (u.includes('ifood')) return { id: 'ifood', name: 'iFood', color: '#EA1D2C' };
             return { id: 'other', name: 'Otros', color: '#757575' };
         }
 
-        function decodeHtmlEntities(str) {
+        function decodeHtml(str) {
             if (!str) return str;
-            return str
-                .replace(/&apos;/g, "'")
-                .replace(/&amp;/g, "&")
-                .replace(/&quot;/g, '"')
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&#39;/g, "'")
-                .replace(/&nbsp;/g, " ");
+            return str.replace(/&apos;/g,"'").replace(/&amp;/g,"&")
+                      .replace(/&quot;/g,'"').replace(/&lt;/g,"<")
+                      .replace(/&gt;/g,">").replace(/&#39;/g,"'").replace(/&nbsp;/g," ");
         }
 
         async function render(catFilter = 'all', platFilter = 'all') {
             markers.clearLayers();
-            if (heatLayer) {
-                map.removeLayer(heatLayer);
-                heatLayer = null;
-            }
-            
-            let bounds = [], heatData = [], counts = { peya: 0, uber: 0, didi: 0, ifood: 0, total: 0 };
-            let didiQueue = []; 
+            if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+
+            let bounds = [], heatData = [], geocodeQueue = [];
+            let counts = { peya: 0, uber: 0, didi: 0, ifood: 0, total: 0 };
 
             for (const shop of window.SCRAPED_LEADS) {
                 const plat = getPlat(shop.URL);
                 if (platFilter !== 'all' && platFilter !== plat.id) continue;
                 if (catFilter !== 'all' && !(shop.CATEGORIES || "").toString().toLowerCase().includes(catFilter.toLowerCase())) continue;
 
-                let lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
+                const lat = parseFloat(shop.LAT), lng = parseFloat(shop.LNG);
                 const rating = parseFloat(shop.RATING || 0);
                 const fillCol = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
-
-                const shopName = decodeHtmlEntities(shop.NAME);
-                const phoneClean = (shop.PHONE || "").replace(/\D/g, '');
-                const waLink = (phoneClean && phoneClean.length > 5) ? `<a href="https://wa.me/${phoneClean}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : '';
+                const name = decodeHtml(shop.NAME);
+                const phone = (shop.PHONE || "").replace(/\D/g, '');
+                const waLink = (phone && phone.length > 5) ? `<a href="https://wa.me/${phone}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : '';
                 const mapsLink = shop.ADDRESS ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.ADDRESS)}" target="_blank" class="btn-maps">🗺️ Cómo llegar</a>` : '';
 
-                const popupHtml = `<div class="popup-card">
+                const popup = `<div class="popup-card">
                     <div class="popup-header">
-                        <span class="popup-title">${shopName}</span>
-                        <span class="popup-badge" style="background:${plat.color}; color:white;">${plat.name}</span>
+                        <span class="popup-title">${name}</span>
+                        <span class="popup-badge" style="background:${plat.color};color:white">${plat.name}</span>
                     </div>
                     <p class="popup-text">📍 ${shop.ADDRESS}</p>
                     <p class="popup-text">⭐ <b>${rating}</b></p>
-                    ${waLink}
-                    ${mapsLink}
+                    ${waLink}${mapsLink}
                 </div>`;
 
-                if (lat === 0.000001) {
-                    didiQueue.push({ shop, plat, rating, fillCol, popupHtml });
-                    if (counts[plat.id] !== undefined) counts[plat.id]++;
-                    counts.total++;
-                } else if (lat !== 0 && !isNaN(lat)) {
+                if (counts[plat.id] !== undefined) counts[plat.id]++;
+                counts.total++;
+
+                if (!lat || lat === 0.000001 || isNaN(lat)) {
+                    geocodeQueue.push({ shop, plat, fillCol, popup, rating });
+                } else {
                     const m = L.circleMarker([lat, lng], { radius: 8, fillColor: fillCol, color: plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
-                    m.bindPopup(popupHtml);
+                    m.bindPopup(popup);
                     bounds.push([lat, lng]);
                     heatData.push([lat, lng, rating / 5]);
-                    if (counts[plat.id] !== undefined) counts[plat.id]++;
-                    counts.total++;
                 }
             }
 
-            const totalEl = document.getElementById('count-total');
-            if (totalEl) {
-                totalEl.innerText = counts.total;
-                document.getElementById('count-uber').innerText = counts.uber;
-                document.getElementById('count-didi').innerText = counts.didi;
-                document.getElementById('count-peya').innerText = counts.peya;
-                document.getElementById('count-ifood').innerText = counts.ifood;
-            }
+            document.getElementById('count-total').innerText = counts.total;
+            document.getElementById('count-uber').innerText  = counts.uber;
+            document.getElementById('count-didi').innerText  = counts.didi;
+            document.getElementById('count-peya').innerText  = counts.peya;
+            document.getElementById('count-ifood').innerText = counts.ifood;
 
-            if (showHeat && heatData.length > 0) {
+            if (showHeat && heatData.length > 0)
                 heatLayer = L.heatLayer(heatData, { radius: 25, blur: 15, max: 1.0 }).addTo(map);
-            }
-
-            let delay = 0;
-            let firstDidiFound = false;
-
-            didiQueue.forEach((item, index) => {
-                setTimeout(async () => {
-                    const coords = await geocode(item.shop.ADDRESS, item.shop.URL);
-                    if (coords) {
-                        const mDidi = L.circleMarker(coords, { radius: 8, fillColor: item.fillCol, color: item.plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
-                        mDidi.bindPopup(item.popupHtml);
-                        
-                        if (showHeat && heatLayer) heatLayer.addLatLng([...coords, item.rating / 5]);
-
-                        // SOLUCIÓN DIDI: Si es el primer punto de DiDi que encontramos y el mapa está vacío, nos movemos ahí
-                        if (!firstDidiFound && bounds.length === 0) {
-                            firstDidiFound = true;
-                            map.setView(coords, 13);
-                        }
-                    }
-                }, delay);
-                delay += 1500; 
-            });
 
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+
+            let delay = 0, firstFound = bounds.length === 0;
+            geocodeQueue.forEach(item => {
+                setTimeout(async () => {
+                    const coords = await geocode(item.shop.ADDRESS, item.shop.URL);
+                    if (!coords) return;
+                    const m = L.circleMarker(coords, { radius: 8, fillColor: item.fillCol, color: item.plat.color, weight: 4, fillOpacity: 0.9 }).addTo(markers);
+                    m.bindPopup(item.popup);
+                    if (showHeat && heatLayer) heatLayer.addLatLng([...coords, item.rating / 5]);
+                    if (firstFound) { firstFound = false; map.setView(coords, 13); }
+                }, delay);
+                delay += 1500;
+            });
         }
 
-        document.getElementById('btnManualSearch').onclick = async () => {
-            const query = document.getElementById('addressInput').value;
+        async function doSearch() {
+            const query = document.getElementById('addressInput').value.trim();
             if (!query) return;
             const coords = await geocode(query);
             if (coords) {
@@ -225,88 +299,39 @@
             } else {
                 alert("No se encontró la dirección.");
             }
-        };
+        }
+        document.getElementById('btnManualSearch').onclick = doSearch;
+        document.getElementById('addressInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
         const locateControl = L.control({ position: 'bottomleft' });
         locateControl.onAdd = function() {
             const div = L.DomUtil.create('div', 'locate-btn');
             div.innerHTML = '📍';
-            div.onclick = function() { map.locate({ setView: true, maxZoom: 15 }); };
+            div.title = 'Mi ubicación';
+            div.onclick = () => map.locate({ setView: true, maxZoom: 15 });
             return div;
         };
-
-        map.on('locationfound', (e) => {
+        map.on('locationfound', e => {
             L.circle(e.latlng, { radius: e.accuracy, color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.15 }).addTo(markers);
         });
 
-        const filterControl = L.control({ position: 'topright' });
-        filterControl.onAdd = function() {
-            const div = L.DomUtil.create('div', 'legend filter-panel');
-            let cats = new Set();
+        function populateCategories() {
+            const cats = new Set();
             (window.SCRAPED_LEADS || []).forEach(s => {
                 if (s.CATEGORIES) (Array.isArray(s.CATEGORIES) ? s.CATEGORIES : s.CATEGORIES.split(',')).forEach(c => cats.add(c.toString().trim()));
             });
+            const sel = document.getElementById('catFilter');
+            Array.from(cats).sort().forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                sel.appendChild(opt);
+            });
+        }
 
-            div.innerHTML = `
-                <button class="panel-toggle-btn" id="panelToggle">
-                    <span>🏢 Filtros</span><span id="panelArrow">▲</span>
-                </button>
-                <div class="panel-body" id="panelBody">
-                    <b style="margin-top:8px">Plataforma</b>
-                    <select id="platFilter"><option value="all">Todas</option><option value="peya">PedidosYa</option><option value="uber">Uber Eats</option><option value="didi">DiDi Food</option><option value="ifood">iFood</option></select>
-                    <b style="margin-top:8px">🍕 Rubro</b>
-                    <select id="catFilter"><option value="all">Todos</option>${Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('')}</select>
-                    <button id="heatToggle" class="map-toggle" style="margin-top:8px">🔥 HEATMAP: OFF</button>
-                </div>
-            `;
-
-            // Collapsible toggle
-            div.querySelector('#panelToggle').onclick = function(e) {
-                L.DomEvent.stopPropagation(e);
-                div.classList.toggle('collapsed');
-                document.getElementById('panelArrow').innerText = div.classList.contains('collapsed') ? '▼' : '▲';
-            };
-
-            div.querySelector('#heatToggle').onclick = function(e) {
-                L.DomEvent.stopPropagation(e);
-                showHeat = !showHeat;
-                this.innerText = `🔥 HEATMAP: ${showHeat ? 'ON' : 'OFF'}`;
-                this.classList.toggle('active');
-                render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
-            };
-
-            div.onchange = () => render(document.getElementById('catFilter').value, document.getElementById('platFilter').value);
-            L.DomEvent.disableScrollPropagation(div);
-            return div;
-        };
-
-        const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = () => {
-            const div = L.DomUtil.create('div', 'legend stats-panel');
-            div.innerHTML = `
-                <b>📊 Market Share (<span id="count-total">0</span>)</b>
-                <br><span class="platform-ring" style="border: 2px solid #000000"></span> Uber Eats <span class="count-badge" id="count-uber">0</span>
-                <br><span class="platform-ring" style="border: 2px solid #FF8D00"></span> DiDi Food <span class="count-badge" id="count-didi">0</span>
-                <br><span class="platform-ring" style="border: 2px solid #E0004D"></span> PedidosYa <span class="count-badge" id="count-peya">0</span>
-                <br><span class="platform-ring" style="border: 2px solid #EA1D2C"></span> iFood <span class="count-badge" id="count-ifood">0</span>
-                <hr style="border:none; border-top:1px solid #eee; margin: 8px 0;">
-                <b>🚦 Oportunidad</b><br>
-                <div class="semaforo-row"><div class="semaforo-dot" style="background:#22c55e"></div> +4.5 ⭐ — Alianza ideal</div>
-                <div class="semaforo-row"><div class="semaforo-dot" style="background:#eab308"></div> 4.0–4.5 ⭐ — Promedio</div>
-                <div class="semaforo-row"><div class="semaforo-dot" style="background:#ef4444"></div> -4.0 ⭐ — <b>Tu objetivo</b></div>
-            `;
-            return div;
-        };
-
-        document.getElementById('addressInput').addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') document.getElementById('btnManualSearch').click();
-        });
-
-        if (window.SCRAPED_LEADS) { 
-            legend.addTo(map); 
-            filterControl.addTo(map); 
+        if (window.SCRAPED_LEADS) {
+            populateCategories();
             locateControl.addTo(map);
-            render(); 
+            render();
         }
     </script>
 </body>
