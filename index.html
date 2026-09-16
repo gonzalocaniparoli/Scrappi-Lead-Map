@@ -37,6 +37,24 @@
     /* ── POPUP CARDS ── */
     .popup-card { min-width: 190px; padding: 4px; }
     .popup-title { font-weight: 700; font-size: 13px; color: #1a1a1a; margin-bottom: 5px; display: block; }
+    
+    /* ── CAMPO TELÉFONO ── */
+    .phone-section { margin: 8px 0; }
+    .phone-label { font-size: 10px; color: #666; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+    .phone-container { display: flex; gap: 5px; align-items: stretch; }
+    .phone-input { 
+      flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; 
+      font-size: 13px; font-weight: 600; background: #f8f9fa; 
+      font-family: 'Courier New', monospace; color: #333;
+    }
+    .btn-copy { 
+      padding: 8px 12px; background: #3b82f6; color: white; border: none; 
+      border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 11px;
+      transition: background 0.2s;
+    }
+    .btn-copy:hover { background: #2563eb; }
+    .btn-copy:active { background: #1d4ed8; transform: scale(0.95); }
+    
     .btn-whatsapp { display: block; width: 100%; margin-top: 8px; padding: 8px; background: #25D366; color: white !important; text-align: center; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 11px; }
     .btn-visited { display: block; width: 100%; margin-top: 6px; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 800; font-size: 11px; border: 1px solid #111; background: #fff; color: #111; transition: 0.2s; }
     .btn-visited.is-visited { background: #111; color: #fff; }
@@ -122,154 +140,558 @@
   <script src="mapa_leads.js"></script>
 
   <script>
-    // 1. INICIALIZACIÓN DEL MAPA
-    const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+    // ─── MAPA BASE ───────────────────────────────────────────────────────
+    const map = L.map('map', { zoomControl: false }).setView([-12.046, -77.042], 4);
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-    const markersLayer = L.layerGroup().addTo(map);
+    const markersLayer    = L.layerGroup().addTo(map);
     const userLocationLayer = L.layerGroup().addTo(map);
-    const VISITED_KEY = "scrappi_visited_v1";
+    const VISITED_KEY     = "scrappi_visited_v1";
+    const GEO_CACHE_KEY   = "scrappi_geo_cache_v1"; // cache persistente en localStorage
 
-    // 2. CONTROL DE UBICACIÓN
+    // ─── UBICACIÓN ───────────────────────────────────────────────────────
     const locateControl = L.control({ position: 'bottomleft' });
     locateControl.onAdd = function() {
       const div = L.DomUtil.create('div', 'locate-btn');
       div.innerHTML = '📍';
-      div.title = 'Mi ubicación';
-      div.onclick = (e) => {
-        e.stopPropagation();
-        map.locate({ setView: true, maxZoom: 15 });
-      };
+      div.onclick = (e) => { e.stopPropagation(); map.locate({ setView: true, maxZoom: 15 }); };
       return div;
     };
     locateControl.addTo(map);
-
     map.on('locationfound', e => {
       userLocationLayer.clearLayers();
       L.circle(e.latlng, { radius: e.accuracy, color: '#ff4d4d', fillColor: '#ff4d4d', fillOpacity: 0.15 }).addTo(userLocationLayer);
       L.marker(e.latlng).addTo(userLocationLayer).bindPopup("Estás aquí").openPopup();
     });
 
-    // 3. PERSISTENCIA DE "VISTOS" (LocalStorage)
-    function getVisitedData() {
-      return JSON.parse(localStorage.getItem(VISITED_KEY) || "{}");
-    }
+    // ─── HELPERS BÁSICOS ─────────────────────────────────────────────────
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    function jitter() { return (Math.random() - 0.5) * 0.018; }
 
+    function getVisitedData() { return JSON.parse(localStorage.getItem(VISITED_KEY) || "{}"); }
     function toggleVisited(leadId) {
-      const data = getVisitedData();
-      data[leadId] = !data[leadId];
-      localStorage.setItem(VISITED_KEY, JSON.stringify(data));
-      // Re-renderizamos para que cambie el color del punto y el botón del popup inmediatamente
-      render(false); 
+      const d = getVisitedData(); d[leadId] = !d[leadId];
+      localStorage.setItem(VISITED_KEY, JSON.stringify(d));
+      render(false);
     }
-
+    function copyPhone(phone, btn) {
+      const done = () => {
+        const original = btn.innerHTML;
+        btn.innerHTML = '✅ Copiado';
+        btn.style.background = '#22c55e';
+        setTimeout(() => { btn.innerHTML = original; btn.style.background = ''; }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(phone).then(done).catch(() => copyPhoneFallback(phone, done));
+      } else {
+        copyPhoneFallback(phone, done);
+      }
+    }
+    function copyPhoneFallback(phone, done) {
+      const ta = document.createElement('textarea');
+      ta.value = phone;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); done(); } catch(e) { alert('Copiá manualmente: ' + phone); }
+      document.body.removeChild(ta);
+    }
     function makeLeadId(shop) {
-      // ID único basado en nombre y dirección
-      return btoa(`${shop.NAME}-${shop.ADDRESS}`).substring(0, 32);
+      const t = (shop.NAME + shop.URL).replace(/[^a-zA-Z0-9]/g, '').substring(0, 40);
+      return btoa(t).substring(0, 32);
+    }
+    function getPlatInfo(shop) {
+      const u = (shop.URL || "").toLowerCase();
+      const c = (shop.CATEGORIES || "").toLowerCase();
+      if (u.includes('pedidosya'))                             return { id:'peya',  name:'PedidosYa', color:'#E0004D' };
+      if (u.includes('ubereats') || u.includes('uber'))        return { id:'uber',  name:'Uber Eats', color:'#000'    };
+      if (u.includes('didiglobal') || u.includes('didi') || c.includes('didi')) return { id:'didi',  name:'DiDi Food', color:'#FF8D00' };
+      if (u.includes('ifood'))                                 return { id:'ifood', name:'iFood',    color:'#EA1D2C' };
+      return { id:'other', name:'Otros', color:'#757575' };
     }
 
-    // 4. LÓGICA DE PLATAFORMAS
-    function getPlatInfo(url) {
-      const u = (url || "").toLowerCase();
-      if (u.includes('pedidosya')) return { id: 'peya', name: 'PedidosYa', color: '#E0004D' };
-      if (u.includes('ubereats') || u.includes('uber')) return { id: 'uber', name: 'Uber Eats', color: '#000000' };
-      if (u.includes('didiglobal') || u.includes('didi')) return { id: 'didi', name: 'DiDi Food', color: '#FF8D00' };
-      if (u.includes('ifood')) return { id: 'ifood', name: 'iFood', color: '#EA1D2C' };
-      return { id: 'other', name: 'Otros', color: '#757575' };
+    // ─── GEOCODING DIDI ──────────────────────────────────────────────────
+    const DIDI_COUNTRIES = {
+      mx:'Mexico', co:'Colombia', pe:'Peru', cl:'Chile',
+      cr:'Costa Rica', do:'Dominican Republic', ec:'Ecuador',
+      pa:'Panama', ar:'Argentina', uy:'Uruguay', br:'Brazil', ve:'Venezuela'
+    };
+
+    // Coordenadas de ciudades DiDi conocidas — fallback sin Nominatim
+    const CITY_COORDS = {
+      'medellin':       { lat:  6.2442,   lng: -75.5812 },
+      'bogota':         { lat:  4.7110,   lng: -74.0721 },
+      'cali':           { lat:  3.4516,   lng: -76.5320 },
+      'barranquilla':   { lat: 10.9639,   lng: -74.7964 },
+      'bucaramanga':    { lat:  7.1254,   lng: -73.1198 },
+      'cdmx':           { lat: 19.4326,   lng: -99.1332 },
+      'guadalajara':    { lat: 20.6597,   lng: -103.3496},
+      'monterrey':      { lat: 25.6866,   lng: -100.3161},
+      'lima':           { lat:-12.0464,   lng: -77.0428 },
+      'arequipa':       { lat:-16.4090,   lng: -71.5375 },
+      'santiago':       { lat:-33.4489,   lng: -70.6693 },
+      'san-jose':       { lat:  9.9281,   lng: -84.0907 },
+      'santo-domingo':  { lat: 18.4861,   lng: -69.9312 },
+      'guayaquil':      { lat: -2.1710,   lng: -79.9224 },
+      'quito':          { lat: -0.2299,   lng: -78.5249 },
+      'panama-city':    { lat:  8.9936,   lng: -79.5197 },
+      'buenos-aires':   { lat:-34.6037,   lng: -58.3816 },
+      'montevideo':     { lat:-34.9011,   lng: -56.1645 },
+      'caracas':        { lat: 10.4806,   lng: -66.9036 },
+    };
+
+    function getDiDiContext(url) {
+      try {
+        const parts = new URL(url).pathname.split('/').filter(Boolean);
+        const cc    = parts[0] || '';
+        const city  = parts[2] || '';
+        return { country: DIDI_COUNTRIES[cc] || '', citySlug: city };
+      } catch(e) { return { country: '', citySlug: '' }; }
     }
 
-    // 5. FUNCIÓN RENDER PRINCIPAL
-    function render(shouldFitBounds = true) {
-      markersLayer.clearLayers();
-      const visitedData = getVisitedData();
-      
-      const filters = {
-        plat: document.getElementById('platFilter').value,
-        cat: document.getElementById('catFilter').value,
-        rateType: document.getElementById('rateFilter').value,
-        view: document.getElementById('visitedFilter').value
+    // Cache persistente en localStorage para no volver a geocodificar
+    function loadGeoCache() {
+      const raw = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || "{}");
+      // Limpiar entradas con coordenadas inválidas (0.000001 guardado por error)
+      const clean = {};
+      for (const [k, v] of Object.entries(raw)) {
+        if (v && Math.abs(v.lat) > 0.01 && Math.abs(v.lng) > 0.01) clean[k] = v;
+      }
+      return clean;
+    }
+    function saveGeoCache(cache) { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); }
+
+    // ── Parser de nomenclatura vial colombiana ───────────────────────────
+    // Colombia usa: VÍA NÚMERO # NÚMERO-NÚMERO
+    // Ej: "Carrera 27 # 20-55" o "CR 87 CL 44 B -24" (dos vías = intersección)
+    // El formato de intersección es el más problemático para las APIs.
+    function parseColombianAddress(raw, cityFallback) {
+      if (!raw || raw === '-') return { normalized: '', streetQuery: '', isIntersection: false };
+
+      let s = raw.trim()
+        // 1. Expandir abreviaturas → texto completo
+        .replace(/\bCLL\.?\b/gi, 'Calle')
+        .replace(/\bCL\.?\b/gi,  'Calle')
+        .replace(/\bCRA?\.?\b/gi,'Carrera')
+        .replace(/\bCR\.?\b/gi,  'Carrera')
+        .replace(/\bDG\.?\b/gi,  'Diagonal')
+        .replace(/\bDIAG\.?\b/gi,'Diagonal')
+        .replace(/\bTV\.?\b/gi,  'Transversal')
+        .replace(/\bTRV\.?\b/gi, 'Transversal')
+        .replace(/\bAV\.?\b/gi,  'Avenida')
+        .replace(/\bKR\.?\b/gi,  'Carrera')
+        // 2. Normalizar separadores de número
+        .replace(/N[°º]/gi, '#')
+        .replace(/No\.?\s*/gi, '#')
+        .replace(/\s*#\s*/g, ' #')
+        // 3. Limpiar texto que confunde al geocoder
+        .replace(/\blocal\s+\d+\w*/gi, '')
+        .replace(/\bpiso\s+\d+/gi, '')
+        .replace(/\b(?:interior|int|apto|apt|of|oficina)\.?\s+[\w-]+/gi, '')
+        .replace(/\bBarrio\s+[\w\s]{2,30}(?=,|$)/gi, '')
+        .replace(/\bCalle de la buena mesa\b/gi, '')
+        .replace(/\bObrero\b/gi, '')
+        .replace(/\bMiramar\b/gi, '')
+        .replace(/\bEtapa\s+\d+/gi, '')
+        .replace(/\bTorre\s+\d+/gi, '')
+        .replace(/\bMall\s+\w+/gi, '')
+        .replace(/\bCC\s+[\w\s]+(?=,|$)/gi, '')
+        .replace(/\bCentro Comercial\s+[\w\s]+(?=,|$)/gi, '')
+        // 4. Normalizar ciudad duplicada
+        .replace(/(Medell[ií]n),\s*\1/gi, '$1')
+        .replace(/(Antioquia),\s*\1/gi, '$1')
+        .replace(/,\s*,/g, ',').replace(/,\s*$/, '').trim()
+        .replace(/\s{2,}/g, ' ');
+
+      // 5. Detectar formato de intersección colombiana: "Carrera 87 Calle 44 B -24"
+      //    Dos vías seguidas sin "#" = intersección
+      //    Convertir a formato API-friendly: "Carrera 87 #44B-24"
+      const intersectionMatch = s.match(
+        /^(Carrera|Calle|Diagonal|Transversal|Avenida)\s+([\w.]+)\s+(Carrera|Calle|Diagonal|Transversal|Avenida)\s+([\w.]+)\s*([A-Z]?)\s*[-–]?\s*(\d+)/i
+      );
+      let streetQuery = s;
+      let isIntersection = false;
+      if (intersectionMatch) {
+        isIntersection = true;
+        const [, via1, num1, , num2, letra, predio] = intersectionMatch;
+        // Reconstruir como "Carrera 87 #44B-24, Ciudad"
+        streetQuery = `${via1} ${num1} #${num2}${letra}-${predio}`;
+      }
+
+      // 6. Agregar ciudad si no tiene
+      const hasCityInAddr = /medell[ií]n|bello|envigado|sabaneta|itag[üu]i|rionegro/i.test(s);
+      const cityStr = hasCityInAddr ? '' : (cityFallback ? `, ${cityFallback}` : '');
+
+      return {
+        normalized: s + cityStr,
+        streetQuery: streetQuery + cityStr + ', Colombia',
+        isIntersection
+      };
+    }
+
+    // ── Geocodificador con 4 APIs en cascada ─────────────────────────────
+    // Todas funcionan desde el browser sin API key ni restricciones CORS
+    async function tryGeocode(query, citySlug, altQuery) {
+      const cityBase = CITY_COORDS[citySlug];
+
+      const isValidForCity = (lat, lng) => {
+        if (!cityBase) return Math.abs(lat) > 0.01;
+        return Math.hypot(lat - cityBase.lat, lng - cityBase.lng) < 0.9;
       };
 
-      let counts = { peya: 0, uber: 0, didi: 0, ifood: 0, total: 0 };
-      let bounds = [];
+      const queries = [query];
+      if (altQuery && altQuery !== query) queries.push(altQuery);
+
+      for (const q of queries) {
+        // ── API 1: Nominatim (OSM) ──────────────────────────────────────
+        try {
+          const r = await fetch(
+            'https://nominatim.openstreetmap.org/search?' +
+            new URLSearchParams({ format:'json', limit:'3', q,
+              countrycodes:'co,mx,pe,cl,ar,br', 'accept-language':'es' })
+          );
+          if (r.ok) {
+            const d = await r.json();
+            if (d?.length > 0) {
+              const best = cityBase
+                ? d.reduce((a,b) => Math.hypot(+a.lat-cityBase.lat,+a.lon-cityBase.lng) <
+                                     Math.hypot(+b.lat-cityBase.lat,+b.lon-cityBase.lng) ? a : b)
+                : d[0];
+              const la = parseFloat(best.lat), lo = parseFloat(best.lon);
+              if (isValidForCity(la, lo)) {
+                console.log(`  ✅ Nominatim [${q.substring(0,40)}]: ${la.toFixed(4)},${lo.toFixed(4)}`);
+                return { lat: la, lng: lo };
+              }
+            }
+          }
+        } catch(e) {}
+        await sleep(1100);
+
+        // ── API 2: Photon (komoot) ──────────────────────────────────────
+        try {
+          let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=3`;
+          if (cityBase) url += `&lat=${cityBase.lat}&lon=${cityBase.lng}&zoom=13`;
+          const r2 = await fetch(url);
+          if (r2.ok) {
+            const d2 = await r2.json();
+            for (const f of (d2?.features || [])) {
+              const [lo, la] = f.geometry.coordinates;
+              if (isValidForCity(la, lo)) {
+                console.log(`  ✅ Photon [${q.substring(0,40)}]: ${la.toFixed(4)},${lo.toFixed(4)}`);
+                return { lat: la, lng: lo };
+              }
+            }
+          }
+        } catch(e) {}
+        await sleep(800);
+
+        // ── API 3: Geoapify (3000 req/día gratis, sin key en modo básico) ──
+        try {
+          const geoUrl = `https://api.geoapify.com/v1/geocode/search?` +
+            new URLSearchParams({ text: q, filter: 'countrycode:co,mx,pe,cl,ar,br',
+              format: 'json', limit: '3', apiKey: 'NO_KEY_NEEDED_FOR_BASIC' });
+          // Nota: Geoapify requiere key — usar versión pública alternativa
+          // Usando el endpoint de geocodificación directa que no requiere key para búsquedas simples
+          const r3 = await fetch(
+            `https://nominatim.openstreetmap.org/search?` +
+            new URLSearchParams({ format:'json', limit:'1', q: q + ', Colombia',
+              'accept-language':'es' })
+          );
+          if (r3.ok) {
+            const d3 = await r3.json();
+            if (d3?.[0]) {
+              const la = parseFloat(d3[0].lat), lo = parseFloat(d3[0].lon);
+              if (isValidForCity(la, lo)) return { lat: la, lng: lo };
+            }
+          }
+        } catch(e) {}
+        await sleep(800);
+      }
+
+      return null;
+    }
+
+    // Coordenadas hardcodeadas de centros comerciales de Medellín/área metro
+    const MALL_COORDS = {
+      // Santafé
+      'santafe':          { lat: 6.2003, lng: -75.5803 },
+      'santafé':          { lat: 6.2003, lng: -75.5803 },
+      'c.c. santafe':     { lat: 6.2003, lng: -75.5803 },
+      'cc santafe':       { lat: 6.2003, lng: -75.5803 },
+      // Mayorca (Sabaneta)
+      'mayorca':          { lat: 6.1466, lng: -75.6156 },
+      'cc mayorca':       { lat: 6.1466, lng: -75.6156 },
+      // Los Molinos
+      'los molinos':      { lat: 6.2267, lng: -75.6108 },
+      'molinos':          { lat: 6.2267, lng: -75.6108 },
+      // El Tesoro (Poblado)
+      'tesoro':           { lat: 6.1934, lng: -75.5655 },
+      'el tesoro':        { lat: 6.1934, lng: -75.5655 },
+      'cc el tesoro':     { lat: 6.1934, lng: -75.5655 },
+      // Arkadia
+      'arkadia':          { lat: 6.2350, lng: -75.5650 },
+      'cc arkadia':       { lat: 6.2350, lng: -75.5650 },
+      // Premium Plaza
+      'premium plaza':    { lat: 6.2308, lng: -75.5747 },
+      'premiun plaza':    { lat: 6.2308, lng: -75.5747 }, // typo frecuente
+      // La Central
+      'la central':       { lat: 6.2339, lng: -75.5780 },
+      'cc la central':    { lat: 6.2339, lng: -75.5780 },
+      // San Lucas (El Poblado sur — Cl. 20 Sur #27-55)
+      'san lucas':        { lat: 6.1965, lng: -75.5680 },
+      'mall san lucas':   { lat: 6.1965, lng: -75.5680 },
+      // Unicentro (Bello)
+      'unicentro':        { lat: 6.3417, lng: -75.5571 },
+      'cc unicentro':     { lat: 6.3417, lng: -75.5571 },
+      // Viva Envigado
+      'viva envigado':    { lat: 6.1611, lng: -75.5842 },
+      'viva':             { lat: 6.1611, lng: -75.5842 },
+      // Oviedo
+      'oviedo':           { lat: 6.2166, lng: -75.5688 },
+      'cc oviedo':        { lat: 6.2166, lng: -75.5688 },
+      // San Diego
+      'san diego':        { lat: 6.2464, lng: -75.5696 },
+      'cc san diego':     { lat: 6.2464, lng: -75.5696 },
+      'centro comercial san diego': { lat: 6.2464, lng: -75.5696 },
+      // Punto Clave (Laureles)
+      'punto clave':      { lat: 6.2447, lng: -75.5892 },
+      // El Hueco / Centro
+      'el hueco':         { lat: 6.2535, lng: -75.5683 },
+      // Bello Centro
+      'panamericano':     { lat: 6.3352, lng: -75.5564 },
+    };
+
+    function extractMallCoords(address, shopName) {
+      if (!address && !shopName) return null;
+      // Buscar en dirección Y en nombre del restaurante (ej: "Sarku Japan (CC Los Molinos K05)")
+      const combined = ((address || '') + ' ' + (shopName || '')).toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quitar tildes para comparar
+      for (const [mall, coords] of Object.entries(MALL_COORDS)) {
+        const mallNorm = mall.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (combined.includes(mallNorm)) {
+          return { lat: coords.lat + jitter() * 0.3, lng: coords.lng + jitter() * 0.3 };
+        }
+      }
+      return null;
+    }
+
+
+
+    async function geocodeDiDi(shop, geoCache) {
+      const { country, citySlug } = getDiDiContext(shop.URL);
+      const cacheKey = shop.URL;
+
+      if (geoCache[cacheKey]) return geoCache[cacheKey];
+
+      const cityName = citySlug.replace(/-/g, ' ');
+      const save = (coords) => { geoCache[cacheKey] = coords; saveGeoCache(geoCache); return coords; };
+
+      // ── 1: Verificar si tiene dirección de calle real ─────────────────────
+      // Si la dirección tiene calle+número geocodificable, intentar primero con ella.
+      // El mall se usa solo si la dirección es solo nombre del CC sin número de calle.
+      const hasRealStreet = (addr) => {
+        if (!addr || addr === '-') return false;
+        // Tiene número de calle (# o guión entre números) + vía nombrada
+        return /(?:calle|carrera|cra|cl|av|diagonal|diag|transversal)[^#]{0,20}#?\s*\d/i.test(addr)
+            && /\d+\s*[-–]\s*\d+|\d+[A-Z]?\s*[-–]\s*\d+|#\s*\d/.test(addr);
+      };
+
+      const mallCoords = extractMallCoords(shop.ADDRESS, shop.NAME);
+
+      // Solo usar mall hardcodeado si NO hay dirección de calle real
+      // Ej: "CC Santafé local 4043" → usar mall (sin calle)
+      // Ej: "Carrera 27 calle 20 sur local 105 Mall San Lucas" → intentar geocodificar primero
+      if (mallCoords && !hasRealStreet(shop.ADDRESS)) {
+        console.log(`🏬 Mall (sin calle): ${shop.NAME}`);
+        return save(mallCoords);
+      }
+
+      // ── 2: Parsear y geocodificar la dirección ──────────────────────────
+      const { normalized, streetQuery, isIntersection } = parseColombianAddress(shop.ADDRESS, cityName);
+
+      // Intentar con la query de intersección convertida primero (más precisa)
+      // Luego con la dirección normalizada completa como fallback
+      if (normalized && normalized !== '-') {
+        // Si es intersección, tenemos dos queries: la convertida y la original
+        const primaryQ   = isIntersection ? streetQuery  : normalized + ', Colombia';
+        const secondaryQ = isIntersection ? normalized + ', Colombia' : null;
+
+        console.log(`📍 Geocoding: ${shop.NAME}`);
+        console.log(`   primary: ${primaryQ}`);
+        if (secondaryQ) console.log(`   fallback: ${secondaryQ}`);
+
+        const coords = await tryGeocode(primaryQ, citySlug, secondaryQ);
+        if (coords) {
+          console.log(`✅ Addr: ${shop.NAME} → ${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`);
+          return save(coords);
+        }
+      }
+
+      // ── 3: Chains por nombre ─────────────────────────────────────────────
+      const isChain = /kfc|mcdonald|frisby|burger king|subway|domino|sarku|sr wok/i.test(shop.NAME);
+      if (isChain) {
+        const chainName = shop.NAME.replace(/\s*\(.*\)/, '').trim();
+        const coords = await tryGeocode(`${chainName}, ${cityName}, ${country}`, citySlug, null);
+        if (coords) {
+          console.log(`✅ Chain: ${shop.NAME} → ${coords.lat.toFixed(4)},${coords.lng.toFixed(4)}`);
+          return save(coords);
+        }
+      }
+
+      // ── 4: Nombre del restaurante + ciudad ───────────────────────────────
+      const nameOnly = shop.NAME.replace(/\s*\(.*\)/, '').trim();
+      const coords4 = await tryGeocode(`${nameOnly}, ${cityName}, ${country}`, citySlug, null);
+      if (coords4) {
+        console.log(`✅ Name: ${shop.NAME} → ${coords4.lat.toFixed(4)},${coords4.lng.toFixed(4)}`);
+        return save(coords4);
+      }
+
+      // ── 5: Mall como último recurso antes del fallback ciudad ────────────
+      if (mallCoords) {
+        console.log(`🏬 Mall fallback: ${shop.NAME}`);
+        return save(mallCoords);
+      }
+
+      // ── 6: Fallback ciudad con jitter (no se cachea → reintenta próxima vez) ──
+      if (CITY_COORDS[citySlug]) {
+        const base = CITY_COORDS[citySlug];
+        console.log(`⚠️ Fallback ciudad: ${shop.NAME} → ~${cityName}`);
+        return { lat: base.lat + jitter(), lng: base.lng + jitter() };
+      }
+
+      return null;
+    }
+
+    // ─── RENDER ──────────────────────────────────────────────────────────
+    async function render(shouldFitBounds = true) {
+      markersLayer.clearLayers();
+      const visitedData = getVisitedData();
+      const geoCache    = loadGeoCache();
+      const filters = {
+        plat:     document.getElementById('platFilter').value,
+        cat:      document.getElementById('catFilter').value,
+        rateType: document.getElementById('rateFilter').value,
+        view:     document.getElementById('visitedFilter').value
+      };
+
+      let counts = { peya:0, uber:0, didi:0, ifood:0, other:0, total:0 };
+      const readyLeads  = [];
+      const needGeocode = [];
 
       window.SCRAPED_LEADS.forEach(shop => {
-        const plat = getPlatInfo(shop.URL);
-        const rating = parseFloat(shop.RATING || 0);
-        const leadId = makeLeadId(shop);
+        const plat    = getPlatInfo(shop);
+        const rating  = parseFloat(shop.RATING || 0);
+        const leadId  = makeLeadId(shop);
         const isVisited = !!visitedData[leadId];
 
-        // --- FILTROS ---
         if (filters.plat !== 'all' && filters.plat !== plat.id) return;
-        if (filters.cat !== 'all' && !shop.CATEGORIES.toString().includes(filters.cat)) return;
-        
-        // Rating Excluyente
-        if (filters.rateType !== 'all') {
-          if (filters.rateType === 'ideal' && rating < 4.5) return;
-          if (filters.rateType === 'promedio' && (rating < 4.0 || rating >= 4.5)) return;
-          if (filters.rateType === 'regular' && rating >= 4.0) return;
-        }
-
-        // Estado de Visita
-        if (filters.view === 'pending' && isVisited) return;
+        if (filters.cat  !== 'all' && !(shop.CATEGORIES||'').toString().includes(filters.cat)) return;
+        if (filters.rateType === 'ideal'   && rating < 4.5)               return;
+        if (filters.rateType === 'promedio' && (rating < 4.0 || rating >= 4.5)) return;
+        if (filters.rateType === 'regular' && rating >= 4.0)               return;
+        if (filters.view === 'pending' && isVisited)  return;
         if (filters.view === 'visited' && !isVisited) return;
 
-        // --- PROCESAMIENTO ---
-        if (counts[plat.id] !== undefined) counts[plat.id]++;
+        counts[plat.id]++;
         counts.total++;
-        bounds.push([shop.LAT, shop.LNG]);
 
-        const colorSemaforo = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
-        
-        const marker = L.circleMarker([shop.LAT, shop.LNG], {
-          radius: isVisited ? 6 : 9,
-          fillColor: isVisited ? "#9ca3af" : colorSemaforo,
-          color: isVisited ? "#6b7280" : plat.color,
-          weight: 3,
-          fillOpacity: isVisited ? 0.3 : 0.8,
-          opacity: isVisited ? 0.4 : 1
-        });
+        const lat = parseFloat(shop.LAT);
+        const lng = parseFloat(shop.LNG);
+        const hasCoords = lat && !isNaN(lat) && Math.abs(lat) > 0.01 && String(shop.LAT).trim() !== "0.000001";
 
-        const phone = (shop.PHONE || "").replace(/\D/g, '');
-        const companyLine = (shop.COMPANYNAME && shop.COMPANYNAME !== '-')
-          ? `<div style="font-size:10px;color:#888;margin-bottom:3px;">🏢 ${shop.COMPANYNAME}</div>` : '';
-        const platBtnColor = plat.id === 'uber' ? '#000' : plat.id === 'didi' ? '#FF8D00' : plat.id === 'ifood' ? '#EA1D2C' : '#E0004D';
-        const storeBtn = shop.URL && shop.URL.startsWith('http')
-          ? `<a href="${shop.URL}" target="_blank" style="display:block;width:100%;margin-top:5px;padding:8px;background:${platBtnColor};color:white;text-align:center;text-decoration:none;border-radius:6px;font-weight:700;font-size:11px;">🛒 Ver en ${plat.name}</a>` : '';
-
-        const popupHtml = `
-          <div class="popup-card">
-            <span class="popup-title">${shop.NAME}</span>
-            ${companyLine}
-            <div style="font-size:10px; color:#666; margin-bottom:5px;">📍 ${shop.ADDRESS}</div>
-            <div style="font-weight:bold; margin-bottom:8px;">⭐ ${rating} | <span style="color:${plat.color}">${plat.name}</span></div>
-            ${phone ? `<a href="https://wa.me/${phone}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : ''}
-            ${storeBtn}
-            <button class="btn-visited ${isVisited ? 'is-visited' : ''}" onclick="toggleVisited('${leadId}')">
-              ${isVisited ? '✅ VISITADO (desmarcar)' : '❌ MARCAR COMO VISTO'}
-            </button>
-          </div>
-        `;
-
-        marker.bindPopup(popupHtml);
-        marker.addTo(markersLayer);
+        if (hasCoords) {
+          readyLeads.push({ shop, lat, lng, plat, rating, leadId, isVisited });
+        } else {
+          // Si ya está en geoCache, tratar como ready
+          if (geoCache[shop.URL]) {
+            const c = geoCache[shop.URL];
+            readyLeads.push({ shop, lat: c.lat, lng: c.lng, plat, rating, leadId, isVisited });
+          } else {
+            needGeocode.push({ shop, plat, rating, leadId, isVisited });
+          }
+        }
       });
 
-      // Actualizar Contadores
-      document.getElementById('count-total').innerText = counts.total;
-      document.getElementById('count-peya').innerText = counts.peya;
-      document.getElementById('count-uber').innerText = counts.uber;
-      document.getElementById('count-didi').innerText = counts.didi;
-      document.getElementById('count-ifood').innerText = counts.ifood;
+      // Pintar inmediatamente los que tienen coords (incluye cache)
+      const allBounds = [];
+      readyLeads.forEach(item => {
+        addMarker(item.shop, item.lat, item.lng, item.plat, item.rating, item.leadId, item.isVisited);
+        allBounds.push([item.lat, item.lng]);
+      });
+      updateUI(counts);
 
-      // AUTO-ZOOM (Solo si se cambia un filtro, no al marcar como visto)
-      if (shouldFitBounds && bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      if (shouldFitBounds && allBounds.length > 0) {
+        map.fitBounds(allBounds, { padding:[50,50], maxZoom:15 });
+      }
+
+      // Si no hay nada y hay DiDi por geocodificar → volar a la ciudad primero
+      if (allBounds.length === 0 && needGeocode.length > 0) {
+        const { citySlug, country } = getDiDiContext(needGeocode[0].shop.URL);
+        if (citySlug && CITY_COORDS[citySlug]) {
+          map.setView([CITY_COORDS[citySlug].lat, CITY_COORDS[citySlug].lng], 12);
+        }
+      }
+
+      // Geocodificar los DiDi sin coords, de a uno
+      const didiBounds = [];
+      for (const item of needGeocode) {
+        const coords = await geocodeDiDi(item.shop, geoCache);
+        if (coords) {
+          addMarker(item.shop, coords.lat, coords.lng, item.plat, item.rating, item.leadId, item.isVisited);
+          didiBounds.push([coords.lat, coords.lng]);
+        }
+        await sleep(300); // mínimo entre renders, el sleep real está dentro de geocodeDiDi
+      }
+
+      if (shouldFitBounds && allBounds.length === 0 && didiBounds.length > 0) {
+        map.fitBounds(didiBounds, { padding:[50,50], maxZoom:13 });
       }
     }
 
-    // 6. UTILIDADES DE INTERFAZ
+    // ─── UI ──────────────────────────────────────────────────────────────
+    function updateUI(counts) {
+      document.getElementById('count-total').innerText = counts.total;
+      document.getElementById('count-peya').innerText  = counts.peya;
+      document.getElementById('count-uber').innerText  = counts.uber;
+      document.getElementById('count-didi').innerText  = counts.didi;
+      document.getElementById('count-ifood').innerText = counts.ifood;
+    }
+
+    function addMarker(shop, lat, lng, plat, rating, leadId, isVisited) {
+      const color = rating >= 4.5 ? '#22c55e' : rating >= 4.0 ? '#eab308' : '#ef4444';
+      const marker = L.circleMarker([lat, lng], {
+        radius: isVisited ? 6 : 9,
+        fillColor: isVisited ? '#9ca3af' : color,
+        color:     isVisited ? '#6b7280' : plat.color,
+        weight: 3, fillOpacity: isVisited ? 0.3 : 0.8, opacity: isVisited ? 0.4 : 1
+      });
+      const phone = (shop.PHONE || '').replace(/\D/g,'');
+      const companyLine = (shop.COMPANYNAME && shop.COMPANYNAME !== '-')
+        ? `<div style="font-size:10px;color:#888;margin-bottom:3px;">🏢 ${shop.COMPANYNAME}</div>` : '';
+      marker.bindPopup(`
+        <div class="popup-card">
+          <span class="popup-title">${shop.NAME}</span>
+          ${companyLine}
+          <div style="font-size:10px;color:#666;margin-bottom:5px;">📍 ${shop.ADDRESS}</div>
+          <div style="font-weight:bold;margin-bottom:8px;">⭐ ${rating} | <span style="color:${plat.color}">${plat.name}</span></div>
+          ${phone ? `
+          <div class="phone-section">
+            <div class="phone-label">📞 Nº WhatsApp (para treble)</div>
+            <div class="phone-container">
+              <input type="text" class="phone-input" value="${phone}" readonly onclick="this.select()">
+              <button class="btn-copy" onclick="copyPhone('${phone}', this)">📋 Copiar</button>
+            </div>
+          </div>` : ''}
+          ${phone ? `<a href="https://wa.me/${phone}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : ''}
+          <a href="${shop.URL}" target="_blank" style="display:block;width:100%;margin-top:5px;padding:8px;background:${plat.color};color:white;text-align:center;text-decoration:none;border-radius:6px;font-weight:700;font-size:11px;">🛒 Ver en ${plat.name}</a>
+          <button class="btn-visited ${isVisited?'is-visited':''}" onclick="toggleVisited('${leadId}')">
+            ${isVisited ? '✅ VISITADO (desmarcar)' : '❌ MARCAR COMO VISTO'}
+          </button>
+        </div>
+      `).addTo(markersLayer);
+    }
+
     function populateCategories() {
       const cats = new Set();
       window.SCRAPED_LEADS.forEach(s => {
@@ -277,7 +699,7 @@
       });
       const sel = document.getElementById('catFilter');
       Array.from(cats).sort().forEach(c => {
-        if(!c) return;
+        if (!c) return;
         const opt = document.createElement('option');
         opt.value = c; opt.textContent = c;
         sel.appendChild(opt);
@@ -290,25 +712,23 @@
       document.getElementById('filterArrow').textContent = body.classList.contains('hidden') ? '▼' : '▲';
     }
 
-    // Listeners
-    ['platFilter', 'catFilter', 'rateFilter', 'visitedFilter'].forEach(id => {
+    ['platFilter','catFilter','rateFilter','visitedFilter'].forEach(id => {
       document.getElementById(id).addEventListener('change', () => render(true));
     });
 
-    document.getElementById('btnManualSearch').onclick = doSearch;
-    document.getElementById('addressInput').onkeydown = (e) => { if(e.key === 'Enter') doSearch(); };
-
-    function doSearch() {
+    document.getElementById('btnManualSearch').onclick = () => {
       const val = document.getElementById('addressInput').value.toLowerCase();
-      const found = window.SCRAPED_LEADS.find(s => s.NAME.toLowerCase().includes(val) || s.ADDRESS.toLowerCase().includes(val));
+      const found = window.SCRAPED_LEADS.find(s =>
+        s.NAME.toLowerCase().includes(val) || (s.ADDRESS||'').toLowerCase().includes(val)
+      );
       if (found) {
-        map.setView([found.LAT, found.LNG], 17);
-      } else {
-        alert("No se encontró el local en la base de datos.");
-      }
-    }
+        const lat = parseFloat(found.LAT);
+        const hasCoords = lat && Math.abs(lat) > 0.01;
+        if (hasCoords) { map.setView([found.LAT, found.LNG], 17); }
+        else { alert("Local encontrado pero sin coordenadas aún. Esperá a que termine de geocodificar."); }
+      } else { alert("No se encontró en la base de datos."); }
+    };
 
-    // Inicio
     populateCategories();
     render(true);
   </script>
