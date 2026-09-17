@@ -197,6 +197,17 @@
       try { document.execCommand('copy'); done(); } catch(e) { alert('Copiá manualmente: ' + phone); }
       document.body.removeChild(ta);
     }
+    function buildWhatsAppUrl(phone, brandName) {
+      const cleanPhone = (phone || '').replace(/\D/g, '');
+      const cleanBrand = (brandName || 'el comercio').toString().trim() || 'el comercio';
+      const message = `Hola, ¿cómo estás? Soy Gonzalo, del equipo de Rappi en Tucumán.
+
+Estamos sumando nuevos restaurantes a la plataforma y quería conversar con la persona que administra ${cleanBrand} para contarle una propuesta comercial.
+
+¿Sos vos la persona indicada?`;
+
+      return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    }
     function makeLeadId(shop) {
       const t = (shop.NAME + shop.URL).replace(/[^a-zA-Z0-9]/g, '').substring(0, 40);
       return btoa(t).substring(0, 32);
@@ -667,6 +678,7 @@
         weight: 3, fillOpacity: isVisited ? 0.3 : 0.8, opacity: isVisited ? 0.4 : 1
       });
       const phone = (shop.PHONE || '').replace(/\D/g,'');
+      const whatsappUrl = phone ? buildWhatsAppUrl(phone, shop.NAME) : '';
       const companyLine = (shop.COMPANYNAME && shop.COMPANYNAME !== '-')
         ? `<div style="font-size:10px;color:#888;margin-bottom:3px;">🏢 ${shop.COMPANYNAME}</div>` : '';
       marker.bindPopup(`
@@ -683,7 +695,7 @@
               <button class="btn-copy" onclick="copyPhone('${phone}', this)">📋 Copiar</button>
             </div>
           </div>` : ''}
-          ${phone ? `<a href="https://wa.me/${phone}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : ''}
+          ${phone ? `<a href="${whatsappUrl}" target="_blank" rel="noopener noreferrer" class="btn-whatsapp">💬 Enviar mensaje por WhatsApp</a>` : ''}
           <a href="${shop.URL}" target="_blank" style="display:block;width:100%;margin-top:5px;padding:8px;background:${plat.color};color:white;text-align:center;text-decoration:none;border-radius:6px;font-weight:700;font-size:11px;">🛒 Ver en ${plat.name}</a>
           <button class="btn-visited ${isVisited?'is-visited':''}" onclick="toggleVisited('${leadId}')">
             ${isVisited ? '✅ VISITADO (desmarcar)' : '❌ MARCAR COMO VISTO'}
